@@ -45,11 +45,25 @@ async function loadHistory() {
 }
 
 function handleIncomingMessage(payload: any) {
-  if (payload && (payload.class_id === Number(props.classId) || String(payload.class_id) === String(props.classId))) {
-    // Avoid duplicate if we receive our own message echo
-    const exists = messages.value.some(m => m.id === payload.id)
+  if (!payload) return
+  
+  // Verify target class matches
+  const targetClassId = payload.class_id ?? payload.classId
+  if (String(targetClassId) === String(props.classId)) {
+    const msgId = payload.id
+    const exists = messages.value.some(m => String(m.id) === String(msgId))
     if (!exists) {
-      messages.value.push(payload)
+      // Normalize incoming structure
+      const formatted: ChatMessage = {
+        id: msgId,
+        class_id: Number(props.classId),
+        user_id: payload.user?.id ?? payload.user_id ?? payload.sender_id,
+        user_name: payload.user?.name ?? payload.user_name ?? payload.sender?.name,
+        user: payload.user ?? payload.sender,
+        message: payload.message ?? payload.content ?? '',
+        created_at: payload.created_at ?? new Date().toISOString()
+      }
+      messages.value = [...messages.value, formatted]
       scrollToBottom(true)
     }
   }
@@ -82,20 +96,16 @@ async function submitMessage() {
 
   isSending.value = true
   try {
-    // 1. Try WebSocket send first
+    // 1. Send through WebSocket
     const wsSent = sendChatMessage(props.classId, text)
     if (wsSent) {
       inputText.value = ''
       scrollToBottom(true)
     } else {
       // 2. Fallback to HTTP REST API if WebSocket is offline
-      const newMsg = await messagesService.send(props.classId, text)
+      const newMsg: any = await messagesService.send(props.classId, text)
       inputText.value = ''
-      const exists = messages.value.some(m => m.id === newMsg.id)
-      if (!exists) {
-        messages.value.push(newMsg)
-      }
-      scrollToBottom(true)
+      handleIncomingMessage(newMsg)
     }
   } catch (e: any) {
     console.error('Failed to send message:', e)
@@ -105,7 +115,12 @@ async function submitMessage() {
 }
 
 function isMyMessage(msg: ChatMessage) {
-  return msg.user_id === auth.user?.id || (msg as any).user?.id === auth.user?.id
+  const senderId = msg.user_id ?? msg.user?.id ?? msg.sender_id ?? msg.sender?.id
+  return senderId === auth.user?.id
+}
+
+function getSenderName(msg: ChatMessage) {
+  return msg.user_name || msg.user?.name || msg.sender?.name || 'Anggota Kelas'
 }
 </script>
 
@@ -123,7 +138,7 @@ function isMyMessage(msg: ChatMessage) {
           }"
         />
         <span class="text-surface-500 dark:text-surface-400">
-          {{ wsStatus === 'connected' ? 'Terhubung realtime' : wsStatus === 'reconnecting' ? 'Menyambung kembali...' : 'Mode Offline (REST)' }}
+          {{ wsStatus === 'connected' ? 'Terhubung realtime (WebSocket)' : wsStatus === 'reconnecting' ? 'Menyambung kembali...' : 'Mode Offline (REST)' }}
         </span>
       </div>
       <button
@@ -177,7 +192,7 @@ function isMyMessage(msg: ChatMessage) {
             v-if="!isMyMessage(msg)"
             class="text-[11px] font-medium text-surface-500 dark:text-surface-400 mb-1 px-1"
           >
-            {{ msg.user_name || (msg as any).user?.name || 'Anggota Kelas' }}
+            {{ getSenderName(msg) }}
           </span>
 
           <!-- Bubble content -->

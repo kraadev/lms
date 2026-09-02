@@ -4,6 +4,9 @@ export type WsStatus = 'disconnected' | 'connecting' | 'connected' | 'reconnecti
 
 type EventCallback<T = any> = (payload: T) => void
 
+// Global module-level subscriber registry (singleton across all components)
+const listeners = new Map<string, Set<EventCallback>>()
+
 export function useWebSocket() {
   const config = useRuntimeConfig()
   const wsUrl = config.public.wsUrl || 'ws://localhost:8080/ws'
@@ -12,9 +15,6 @@ export function useWebSocket() {
   const status = useState<WsStatus>('ws_status', () => 'disconnected')
   const retryCount = useState<number>('ws_retry_count', () => 0)
   const activeClassId = useState<number | string | null>('ws_active_class_id', () => null)
-  
-  // Event subscribers map
-  const listeners = new Map<string, Set<EventCallback>>()
 
   let reconnectTimer: any = null
   const MAX_RETRY_DELAY = 15000
@@ -57,12 +57,24 @@ export function useWebSocket() {
           if (data && data.type) {
             const callbacks = listeners.get(data.type)
             if (callbacks) {
-              callbacks.forEach(cb => cb(data.payload))
+              callbacks.forEach(cb => {
+                try {
+                  cb(data.payload)
+                } catch (err) {
+                  console.error(`Error in WS event listener for ${data.type}:`, err)
+                }
+              })
             }
             // Also notify wildcard listeners
             const allCallbacks = listeners.get('*')
             if (allCallbacks) {
-              allCallbacks.forEach(cb => cb(data))
+              allCallbacks.forEach(cb => {
+                try {
+                  cb(data)
+                } catch (err) {
+                  console.error('Error in wildcard WS listener:', err)
+                }
+              })
             }
           }
         } catch (e) {
@@ -77,7 +89,7 @@ export function useWebSocket() {
       ws.onclose = (event) => {
         status.value = 'disconnected'
         socket.value = null
-        
+
         // Auto-reconnect with exponential backoff if closed unexpectedly
         if (event.code !== 1000) {
           const delay = Math.min(BASE_DELAY * Math.pow(1.5, retryCount.value), MAX_RETRY_DELAY)
