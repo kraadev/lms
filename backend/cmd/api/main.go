@@ -20,6 +20,7 @@ import (
 	"lms/internal/chat"
 	"lms/internal/classes"
 	"lms/internal/config"
+	"lms/internal/dashboard"
 	"lms/internal/database"
 	"lms/internal/materials"
 	"lms/internal/meetings"
@@ -100,6 +101,8 @@ func main() {
 	chatHandler := chat.NewHandler(chatHub, chatRepo, accessController, cfg)
 	notifHandler := notifications.NewHandler(notifService)
 
+	dashboardHandler := dashboard.NewHandler(db)
+
 	// 10. HTTP Router Setup
 	r := chi.NewRouter()
 
@@ -160,9 +163,18 @@ func main() {
 	r.Route("/api", func(r chi.Router) {
 		r.Use(middleware.RequireAuth)
 
+		// Dashboard Endpoints
+		r.Route("/dashboard", func(r chi.Router) {
+			r.Get("/student", dashboardHandler.StudentDashboard)
+			r.Get("/teacher", dashboardHandler.TeacherDashboard)
+			r.Get("/admin", dashboardHandler.AdminDashboard)
+		})
+
 		// Users Management
 		r.Route("/users", func(r chi.Router) {
 			r.Get("/{id}", userHandler.GetByID)
+			r.Put("/{id}", userHandler.Update)
+			r.Patch("/{id}", userHandler.Update)
 
 			r.Group(func(r chi.Router) {
 				r.Use(middleware.RequireAdmin)
@@ -172,11 +184,30 @@ func main() {
 			})
 		})
 
+		// Admin Aliases
+		r.Route("/admin", func(r chi.Router) {
+			r.Use(middleware.RequireAdmin)
+			r.Get("/users", userHandler.List)
+			r.Post("/users", userHandler.Create)
+			r.Get("/users/{id}", userHandler.GetByID)
+			r.Put("/users/{id}", userHandler.Update)
+			r.Patch("/users/{id}", userHandler.Update)
+			r.Delete("/users/{id}", userHandler.Delete)
+
+			r.Get("/classes", classHandler.List)
+			r.Post("/classes", classHandler.Create)
+			r.Get("/classes/{id}", classHandler.GetByID)
+			r.Put("/classes/{id}", classHandler.Update)
+			r.Patch("/classes/{id}", classHandler.Update)
+			r.Delete("/classes/{id}", classHandler.Delete)
+		})
+
 		// Classes Management
 		r.Route("/classes", func(r chi.Router) {
 			r.Get("/", classHandler.List)
 			r.Post("/", classHandler.Create)
 			r.Get("/{id}", classHandler.GetByID)
+			r.Put("/{id}", classHandler.Update)
 			r.Patch("/{id}", classHandler.Update)
 			r.Delete("/{id}", classHandler.Delete)
 
@@ -199,31 +230,45 @@ func main() {
 			r.Post("/{classId}/meetings", meetingHandler.Create)
 
 			r.Get("/{classId}/messages", chatHandler.ListMessages)
+
+			// Announcements (mock / class notice)
+			r.Get("/{classId}/announcements", func(w http.ResponseWriter, r *http.Request) {
+				utils.JSON(w, http.StatusOK, []interface{}{})
+			})
+			r.Post("/{classId}/announcements", func(w http.ResponseWriter, r *http.Request) {
+				utils.JSON(w, http.StatusCreated, map[string]string{"message": "Announcement created"})
+			})
 		})
 
 		// Materials Management
 		r.Route("/materials", func(r chi.Router) {
 			r.Get("/{id}", materialHandler.GetByID)
+			r.Put("/{id}", materialHandler.Update)
 			r.Patch("/{id}", materialHandler.Update)
 			r.Delete("/{id}", materialHandler.Delete)
 		})
 
 		// Assignments Management
 		r.Route("/assignments", func(r chi.Router) {
+			r.Get("/", assignmentHandler.ListAll)
 			r.Get("/{id}", assignmentHandler.GetByID)
+			r.Put("/{id}", assignmentHandler.Update)
 			r.Patch("/{id}", assignmentHandler.Update)
 			r.Delete("/{id}", assignmentHandler.Delete)
 
 			r.Post("/{id}/submissions", assignmentHandler.Submit)
+			r.Post("/{id}/submit", assignmentHandler.Submit)
 			r.Get("/{id}/my-submission", assignmentHandler.GetMySubmission)
 			r.Get("/{id}/submissions", assignmentHandler.ListSubmissions)
 		})
 
 		// Submissions Grading
 		r.Patch("/submissions/{id}/grade", assignmentHandler.Grade)
+		r.Post("/submissions/{id}/grade", assignmentHandler.Grade)
 
 		// Quizzes Management & Attempts
 		r.Route("/quizzes", func(r chi.Router) {
+			r.Get("/", quizHandler.ListAll)
 			r.Get("/{id}", quizHandler.GetByID)
 			r.Delete("/{id}", quizHandler.Delete)
 			r.Post("/{id}/attempts", quizHandler.StartAttempt)
@@ -233,6 +278,12 @@ func main() {
 				r.Post("/{id}/submit", quizHandler.SubmitAttempt)
 				r.Get("/{id}", quizHandler.GetAttempt)
 			})
+		})
+
+		// Standalone attempts route alias for frontend
+		r.Route("/attempts", func(r chi.Router) {
+			r.Get("/{id}", quizHandler.GetAttempt)
+			r.Post("/{id}/submit", quizHandler.SubmitAttempt)
 		})
 
 		// Meetings Management
@@ -247,6 +298,7 @@ func main() {
 			r.Get("/", notifHandler.List)
 			r.Patch("/{id}/read", notifHandler.MarkRead)
 			r.Patch("/read-all", notifHandler.MarkAllRead)
+			r.Post("/read-all", notifHandler.MarkAllRead)
 		})
 	})
 

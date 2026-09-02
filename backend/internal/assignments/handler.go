@@ -1,6 +1,7 @@
 package assignments
 
 import (
+	"database/sql"
 	"encoding/json"
 	"net/http"
 	"strconv"
@@ -10,6 +11,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"lms/internal/middleware"
+	"lms/internal/models"
 	"lms/internal/storage"
 	"lms/internal/utils"
 )
@@ -26,6 +28,74 @@ func NewHandler(service *Service, accessController *middleware.AccessController,
 		accessController: accessController,
 		storageService:   storageService,
 	}
+}
+
+func (h *Handler) ListAll(w http.ResponseWriter, r *http.Request) {
+	user := middleware.GetUser(r)
+	classIDStr := r.URL.Query().Get("class_id")
+	if classIDStr != "" {
+		classID, _ := strconv.ParseInt(classIDStr, 10, 64)
+		hasAccess, _ := h.accessController.CheckClassAccess(user.ID, user.Role, classID)
+		if !hasAccess {
+			utils.Forbidden(w, "Forbidden")
+			return
+		}
+		assignments, _ := h.service.ListByClass(classID)
+		utils.JSON(w, http.StatusOK, assignments)
+		return
+	}
+
+	var query string
+	if user.Role == "admin" {
+		query = `SELECT id, class_id, teacher_id, title, description, attachment_path, deadline, max_score, created_at, updated_at FROM assignments ORDER BY deadline DESC;`
+	} else if user.Role == "teacher" {
+		query = `SELECT id, class_id, teacher_id, title, description, attachment_path, deadline, max_score, created_at, updated_at FROM assignments WHERE teacher_id = $1 ORDER BY deadline DESC;`
+		if h.service.repo.db.Driver != "postgres" {
+			query = `SELECT id, class_id, teacher_id, title, description, attachment_path, deadline, max_score, created_at, updated_at FROM assignments WHERE teacher_id = ? ORDER BY deadline DESC;`
+		}
+	} else {
+		query = `
+			SELECT a.id, a.class_id, a.teacher_id, a.title, a.description, a.attachment_path, a.deadline, a.max_score, a.created_at, a.updated_at
+			FROM assignments a
+			JOIN class_members cm ON a.class_id = cm.class_id
+			WHERE cm.user_id = $1
+			ORDER BY a.deadline DESC;
+		`
+		if h.service.repo.db.Driver != "postgres" {
+			query = `
+				SELECT a.id, a.class_id, a.teacher_id, a.title, a.description, a.attachment_path, a.deadline, a.max_score, a.created_at, a.updated_at
+				FROM assignments a
+				JOIN class_members cm ON a.class_id = cm.class_id
+				WHERE cm.user_id = ?
+				ORDER BY a.deadline DESC;
+			`
+		}
+	}
+
+	var rows *sql.Rows
+	var err error
+	if user.Role == "admin" {
+		rows, err = h.service.repo.db.Query(query)
+	} else {
+		rows, err = h.service.repo.db.Query(query, user.ID)
+	}
+
+	var assignments []models.Assignment
+	if err == nil {
+		defer rows.Close()
+		for rows.Next() {
+			var a models.Assignment
+			var dRaw, cRaw, uRaw interface{}
+			if err := rows.Scan(&a.ID, &a.ClassID, &a.TeacherID, &a.Title, &a.Description, &a.AttachmentPath, &dRaw, &a.MaxScore, &cRaw, &uRaw); err == nil {
+				a.Deadline = utils.ParseTime(dRaw)
+				a.CreatedAt = utils.ParseTime(cRaw)
+				a.UpdatedAt = utils.ParseTime(uRaw)
+				assignments = append(assignments, a)
+			}
+		}
+	}
+
+	utils.JSON(w, http.StatusOK, assignments)
 }
 
 func (h *Handler) ListByClass(w http.ResponseWriter, r *http.Request) {

@@ -68,6 +68,29 @@ func (h *Handler) GetByID(w http.ResponseWriter, r *http.Request) {
 	utils.JSON(w, http.StatusOK, user)
 }
 
+func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
+	idStr := chi.URLParam(r, "id")
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		utils.BadRequest(w, "Invalid user ID")
+		return
+	}
+
+	var req UpdateUserRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		utils.BadRequest(w, "Invalid JSON payload")
+		return
+	}
+
+	user, err := h.service.UpdateUser(id, req)
+	if err != nil {
+		utils.BadRequest(w, err.Error())
+		return
+	}
+
+	utils.JSON(w, http.StatusOK, user)
+}
+
 func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
 	idStr := chi.URLParam(r, "id")
 	id, err := strconv.ParseInt(idStr, 10, 64)

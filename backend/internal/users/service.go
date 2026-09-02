@@ -68,6 +68,45 @@ func (s *Service) GetUserByID(id int64) (*models.User, error) {
 	return s.repo.FindByID(id)
 }
 
+type UpdateUserRequest struct {
+	Name      *string      `json:"name,omitempty"`
+	Email     *string      `json:"email,omitempty"`
+	Role      *models.Role `json:"role,omitempty"`
+	AvatarURL *string      `json:"avatar_url,omitempty"`
+	Password  *string      `json:"password,omitempty"`
+}
+
+func (s *Service) UpdateUser(id int64, req UpdateUserRequest) (*models.User, error) {
+	user, err := s.repo.FindByID(id)
+	if err != nil || user == nil {
+		return nil, errors.New("user not found")
+	}
+
+	if req.Name != nil && strings.TrimSpace(*req.Name) != "" {
+		user.Name = strings.TrimSpace(*req.Name)
+	}
+	if req.Email != nil && strings.TrimSpace(*req.Email) != "" {
+		user.Email = strings.TrimSpace(strings.ToLower(*req.Email))
+	}
+	if req.Role != nil {
+		user.Role = *req.Role
+	}
+	if req.AvatarURL != nil {
+		user.AvatarURL = req.AvatarURL
+	}
+	if req.Password != nil && len(*req.Password) >= 6 {
+		passHash, err := utils.HashPassword(*req.Password)
+		if err == nil {
+			user.PasswordHash = passHash
+		}
+	}
+
+	if err := s.repo.Update(user); err != nil {
+		return nil, err
+	}
+	return user, nil
+}
+
 func (s *Service) ListUsers(role, search string) ([]models.User, error) {
 	return s.repo.List(role, search)
 }
