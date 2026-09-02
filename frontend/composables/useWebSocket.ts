@@ -11,9 +11,12 @@ export function useWebSocket() {
   const config = useRuntimeConfig()
   let defaultWs = config.public.wsUrl || 'ws://localhost:8080/ws'
   if (typeof window !== 'undefined') {
-    const host = window.location.hostname
     const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-    defaultWs = `${proto}//${host}:8080/ws`
+    if (window.location.protocol === 'https:' || !window.location.port) {
+      defaultWs = `${proto}//${window.location.host}/ws`
+    } else {
+      defaultWs = `${proto}//${window.location.hostname}:8080/ws`
+    }
   }
   const wsUrl = defaultWs
 
@@ -21,6 +24,7 @@ export function useWebSocket() {
   const status = useState<WsStatus>('ws_status', () => 'disconnected')
   const retryCount = useState<number>('ws_retry_count', () => 0)
   const activeClassId = useState<number | string | null>('ws_active_class_id', () => null)
+  const activeMeetingData = useState<any>('ws_active_meeting_data', () => null)
 
   let reconnectTimer: any = null
   const MAX_RETRY_DELAY = 15000
@@ -53,6 +57,14 @@ export function useWebSocket() {
           ws.send(JSON.stringify({
             type: 'class.join',
             payload: { class_id: Number(activeClassId.value) }
+          }))
+        }
+
+        // Auto re-join active meeting room on open
+        if (activeMeetingData.value) {
+          ws.send(JSON.stringify({
+            type: 'meeting.join',
+            payload: activeMeetingData.value
           }))
         }
       }
@@ -95,7 +107,7 @@ export function useWebSocket() {
       ws.onclose = (event) => {
         status.value = 'disconnected'
         socket.value = null
-
+        
         // Auto-reconnect with exponential backoff if closed unexpectedly
         if (event.code !== 1000) {
           const delay = Math.min(BASE_DELAY * Math.pow(1.5, retryCount.value), MAX_RETRY_DELAY)
@@ -171,6 +183,37 @@ export function useWebSocket() {
     return send('class.leave', { class_id: Number(classId) })
   }
 
+  // Helper to join a meeting room
+  function joinMeetingRoom(meetingId: number | string, isAudio = true, isVideo = true) {
+    const payload = {
+      meeting_id: Number(meetingId),
+      is_audio: isAudio,
+      is_video: isVideo
+    }
+    activeMeetingData.value = payload
+    connect()
+    return send('meeting.join', payload)
+  }
+
+  // Helper to leave a meeting room
+  function leaveMeetingRoom(meetingId: number | string) {
+    activeMeetingData.value = null
+    return send('meeting.leave', { meeting_id: Number(meetingId) })
+  }
+
+  // Helper to sync meeting media state
+  function sendMeetingMedia(meetingId: number | string, isAudio: boolean, isVideo: boolean) {
+    if (activeMeetingData.value) {
+      activeMeetingData.value.is_audio = isAudio
+      activeMeetingData.value.is_video = isVideo
+    }
+    return send('meeting.media', {
+      meeting_id: Number(meetingId),
+      is_audio: isAudio,
+      is_video: isVideo
+    })
+  }
+
   // Helper to send a chat message
   function sendChatMessage(classId: number | string, message: string) {
     return send('chat.send', {
@@ -189,6 +232,9 @@ export function useWebSocket() {
     on,
     joinClassRoom,
     leaveClassRoom,
+    joinMeetingRoom,
+    leaveMeetingRoom,
+    sendMeetingMedia,
     sendChatMessage
   }
 }

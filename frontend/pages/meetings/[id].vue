@@ -45,7 +45,7 @@ const screenStream = ref<MediaStream | null>(null)
 // In-meeting participants (local user + remote peers)
 const participants = ref<any[]>([])
 
-const { connect: connectWs, on: onWs, send: sendWs } = useWebSocket()
+const { connect: connectWs, on: onWs, send: sendWs, joinMeetingRoom, leaveMeetingRoom, sendMeetingMedia } = useWebSocket()
 let wsUnsubs: (() => void)[] = []
 
 useSeoMeta({ title: computed(() => meeting.value?.title ? `${meeting.value.title} - Kelas Online` : 'Ruang Kelas Online') })
@@ -196,15 +196,10 @@ async function initMeeting() {
     // Start local camera/mic stream
     await startMediaStreams()
 
-    // 3. Connect to WebSocket room for instant peer discovery
-    connectWs()
-    sendWs('meeting.join', {
-      meeting_id: Number(meetingId.value),
-      is_audio: isMicOn.value,
-      is_video: isCameraOn.value
-    })
+    // 3. Register WebSocket listeners before room join
+    wsUnsubs.forEach(unsub => unsub())
+    wsUnsubs = []
 
-    // Listen to existing peers
     const unsubPeers = onWs('meeting.peers', (payload: any) => {
       if (payload && Array.isArray(payload.peers)) {
         payload.peers.forEach((peer: any) => {
@@ -227,7 +222,6 @@ async function initMeeting() {
     })
     wsUnsubs.push(unsubPeers)
 
-    // Listen to new incoming peer
     const unsubJoined = onWs('meeting.peer_joined', (peer: any) => {
       if (peer && peer.id !== auth.user?.id) {
         const exists = participants.value.some(p => p.id === peer.id)
@@ -247,7 +241,6 @@ async function initMeeting() {
     })
     wsUnsubs.push(unsubJoined)
 
-    // Listen to peer media changes
     const unsubMedia = onWs('meeting.peer_media', (payload: any) => {
       if (payload) {
         const p = participants.value.find(item => item.id === payload.user_id)
@@ -259,7 +252,6 @@ async function initMeeting() {
     })
     wsUnsubs.push(unsubMedia)
 
-    // Listen to peer left
     const unsubLeft = onWs('meeting.peer_left', (payload: any) => {
       if (payload) {
         const idx = participants.value.findIndex(item => item.id === payload.user_id)
@@ -271,6 +263,9 @@ async function initMeeting() {
       }
     })
     wsUnsubs.push(unsubLeft)
+
+    // 4. Join meeting room via useWebSocket
+    joinMeetingRoom(meetingId.value, isMicOn.value, isCameraOn.value)
 
   } catch (err: any) {
     error.value = err?.message || 'Gagal terhubung ke ruang meeting'
@@ -286,9 +281,7 @@ onBeforeUnmount(() => {
 })
 
 function cleanupStreams() {
-  sendWs('meeting.leave', {
-    meeting_id: Number(meetingId.value)
-  })
+  leaveMeetingRoom(meetingId.value)
   wsUnsubs.forEach(unsub => unsub())
   wsUnsubs = []
 

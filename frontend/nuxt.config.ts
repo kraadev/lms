@@ -45,6 +45,28 @@ export default defineNuxtConfig({
     host: '0.0.0.0'
   },
 
+  nitro: {
+    routeRules: {
+      '/api/**': { proxy: 'http://127.0.0.1:8080/api/**' }
+    }
+  },
+
+  vite: {
+    server: {
+      proxy: {
+        '/api': {
+          target: 'http://127.0.0.1:8080',
+          changeOrigin: true
+        },
+        '/ws': {
+          target: 'ws://127.0.0.1:8080',
+          ws: true,
+          changeOrigin: true
+        }
+      }
+    }
+  },
+
   typescript: {
     strict: true,
     shim: false

@@ -36,9 +36,7 @@ function normalizeData(obj: any): any {
 export class ApiClient {
   private getBaseUrl(): string {
     if (typeof window !== 'undefined') {
-      const host = window.location.hostname
-      const proto = window.location.protocol
-      return `${proto}//${host}:8080/api`
+      return '/api'
     }
     const config = useRuntimeConfig()
     return config.public.apiBaseUrl || 'http://localhost:8080/api'
