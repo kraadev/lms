@@ -187,9 +187,13 @@ export interface LiveKitJoinResponse {
 export interface ChatMessage {
   id: string | number
   class_id: number
-  sender_id: number
-  sender: User
+  sender_id?: number
+  user_id?: number
+  user_name?: string
+  sender?: User
+  user?: User
   message: string
+  content?: string
   created_at: string
   status?: 'sending' | 'sent' | 'failed'
 }

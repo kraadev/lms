@@ -51,7 +51,7 @@ const isHost = computed(() => {
   return auth.isTeacher || auth.isAdmin || meeting.value?.host_id === auth.user?.id || meeting.value?.host?.id === auth.user?.id
 })
 
-function attachLocalVideo(el: HTMLVideoElement | null) {
+function attachLocalVideo(el: any) {
   if (!el) return
   localVideoEl.value = el
   if (localStream.value && isCameraOn.value) {
@@ -62,7 +62,7 @@ function attachLocalVideo(el: HTMLVideoElement | null) {
   }
 }
 
-function attachScreenVideo(el: HTMLVideoElement | null) {
+function attachScreenVideo(el: any) {
   if (!el) return
   screenVideoEl.value = el
   if (screenStream.value && isScreenSharing.value) {
