@@ -233,6 +233,7 @@ func main() {
 			r.Post("/{classId}/meetings", meetingHandler.Create)
 
 			r.Get("/{classId}/messages", chatHandler.ListMessages)
+			r.Post("/{classId}/messages", chatHandler.SendMessage)
 
 			// Announcements (mock / class notice)
 			r.Get("/{classId}/announcements", func(w http.ResponseWriter, r *http.Request) {

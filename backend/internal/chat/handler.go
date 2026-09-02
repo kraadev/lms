@@ -1,6 +1,8 @@
 package chat
 
 import (
+	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"strconv"
@@ -88,3 +90,39 @@ func (h *Handler) ListMessages(w http.ResponseWriter, r *http.Request) {
 
 	utils.JSON(w, http.StatusOK, messages)
 }
+
+func (h *Handler) SendMessage(w http.ResponseWriter, r *http.Request) {
+	user := middleware.GetUser(r)
+	classID, _ := strconv.ParseInt(chi.URLParam(r, "classId"), 10, 64)
+
+	hasAccess, err := h.accessController.CheckClassAccess(user.ID, user.Role, classID)
+	if err != nil || !hasAccess {
+		utils.Forbidden(w, "You are not enrolled in this class.")
+		return
+	}
+
+	var req struct {
+		Message string `json:"message"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Message == "" {
+		utils.BadRequest(w, "Message is required")
+		return
+	}
+
+	msg, err := h.repo.SaveMessage(classID, user.ID, req.Message)
+	if err != nil {
+		utils.InternalServerError(w, "Failed to save message")
+		return
+	}
+
+	// Broadcast to WebSocket room
+	roomKey := fmt.Sprintf("class:%d", classID)
+	eventBytes, _ := json.Marshal(OutgoingEvent{
+		Type:    "chat.message",
+		Payload: msg,
+	})
+	h.hub.BroadcastToRoom(roomKey, eventBytes)
+
+	utils.JSON(w, http.StatusCreated, msg)
+}
+

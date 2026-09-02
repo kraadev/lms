@@ -11,6 +11,7 @@ export function useWebSocket() {
   const socket = useState<WebSocket | null>('ws_socket', () => null)
   const status = useState<WsStatus>('ws_status', () => 'disconnected')
   const retryCount = useState<number>('ws_retry_count', () => 0)
+  const activeClassId = useState<number | string | null>('ws_active_class_id', () => null)
   
   // Event subscribers map
   const listeners = new Map<string, Set<EventCallback>>()
@@ -28,7 +29,10 @@ export function useWebSocket() {
     status.value = retryCount.value > 0 ? 'reconnecting' : 'connecting'
 
     try {
-      const ws = new WebSocket(wsUrl)
+      const token = typeof window !== 'undefined' ? (localStorage.getItem('lms_token') || localStorage.getItem('token') || '') : ''
+      const urlWithToken = token ? `${wsUrl}${wsUrl.includes('?') ? '&' : '?'}token=${encodeURIComponent(token)}` : wsUrl
+
+      const ws = new WebSocket(urlWithToken)
 
       ws.onopen = () => {
         status.value = 'connected'
@@ -36,6 +40,14 @@ export function useWebSocket() {
         if (reconnectTimer) {
           clearTimeout(reconnectTimer)
           reconnectTimer = null
+        }
+
+        // Auto re-join active class room on open
+        if (activeClassId.value) {
+          ws.send(JSON.stringify({
+            type: 'class.join',
+            payload: { class_id: Number(activeClassId.value) }
+          }))
         }
       }
 
@@ -98,6 +110,8 @@ export function useWebSocket() {
 
   function send<T = any>(type: string, payload: T): boolean {
     if (!socket.value || socket.value.readyState !== WebSocket.OPEN) {
+      // Connect if not connected yet
+      connect()
       return false
     }
 
@@ -126,11 +140,16 @@ export function useWebSocket() {
 
   // Helper to join a class chat room
   function joinClassRoom(classId: number | string) {
+    activeClassId.value = classId
+    connect()
     return send('class.join', { class_id: Number(classId) })
   }
 
   // Helper to leave a class chat room
   function leaveClassRoom(classId: number | string) {
+    if (activeClassId.value === classId) {
+      activeClassId.value = null
+    }
     return send('class.leave', { class_id: Number(classId) })
   }
 

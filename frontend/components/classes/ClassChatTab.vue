@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Send, MessageSquare, AlertCircle, RefreshCw } from 'lucide-vue-next'
+import { Send, MessageSquare, AlertCircle, RefreshCw, Clock } from 'lucide-vue-next'
 import { messagesService } from '~/services/messages'
 import type { ChatMessage } from '~/types'
 import { formatDate, formatRelativeTime } from '~/utils/formatters'
@@ -29,21 +29,23 @@ function scrollToBottom(smooth = false) {
 }
 
 async function loadHistory() {
+  if (!props.classId) return
   isLoading.value = true
   error.value = null
   try {
-    const res = await messagesService.getByClass(props.classId)
-    messages.value = res.messages || []
+    const res: any = await messagesService.getByClass(props.classId)
+    messages.value = Array.isArray(res) ? res : (res?.messages || [])
     scrollToBottom(false)
   } catch (err: any) {
     error.value = err?.message || 'Gagal memuat riwayat obrolan'
+    messages.value = []
   } finally {
     isLoading.value = false
   }
 }
 
 function handleIncomingMessage(payload: any) {
-  if (payload && (payload.class_id === Number(props.classId) || payload.class_id === props.classId)) {
+  if (payload && (payload.class_id === Number(props.classId) || String(payload.class_id) === String(props.classId))) {
     // Avoid duplicate if we receive our own message echo
     const exists = messages.value.some(m => m.id === payload.id)
     if (!exists) {
@@ -53,10 +55,20 @@ function handleIncomingMessage(payload: any) {
   }
 }
 
-onMounted(() => {
+function setupRoom() {
   loadHistory()
   joinClassRoom(props.classId)
+  if (unsubWs) unsubWs()
   unsubWs = onWs('chat.message', handleIncomingMessage)
+}
+
+watch(() => props.classId, (newId, oldId) => {
+  if (oldId) leaveClassRoom(oldId)
+  if (newId) setupRoom()
+})
+
+onMounted(() => {
+  setupRoom()
 })
 
 onBeforeUnmount(() => {
@@ -69,18 +81,31 @@ async function submitMessage() {
   if (!text || isSending.value) return
 
   isSending.value = true
-  const ok = sendChatMessage(props.classId, text)
-  if (ok) {
-    inputText.value = ''
-    scrollToBottom(true)
-  } else {
-    // WebSocket not open fallback or notification
+  try {
+    // 1. Try WebSocket send first
+    const wsSent = sendChatMessage(props.classId, text)
+    if (wsSent) {
+      inputText.value = ''
+      scrollToBottom(true)
+    } else {
+      // 2. Fallback to HTTP REST API if WebSocket is offline
+      const newMsg = await messagesService.send(props.classId, text)
+      inputText.value = ''
+      const exists = messages.value.some(m => m.id === newMsg.id)
+      if (!exists) {
+        messages.value.push(newMsg)
+      }
+      scrollToBottom(true)
+    }
+  } catch (e: any) {
+    console.error('Failed to send message:', e)
+  } finally {
+    isSending.value = false
   }
-  isSending.value = false
 }
 
 function isMyMessage(msg: ChatMessage) {
-  return msg.user_id === auth.user?.id || msg.user?.id === auth.user?.id
+  return msg.user_id === auth.user?.id || (msg as any).user?.id === auth.user?.id
 }
 </script>
 
@@ -98,16 +123,16 @@ function isMyMessage(msg: ChatMessage) {
           }"
         />
         <span class="text-surface-500 dark:text-surface-400">
-          {{ wsStatus === 'connected' ? 'Terhubung realtime' : wsStatus === 'reconnecting' ? 'Menyambung kembali...' : 'Offline' }}
+          {{ wsStatus === 'connected' ? 'Terhubung realtime' : wsStatus === 'reconnecting' ? 'Menyambung kembali...' : 'Mode Offline (REST)' }}
         </span>
       </div>
       <button
         type="button"
-        class="text-surface-400 hover:text-surface-600 dark:hover:text-surface-300 flex items-center gap-1"
+        class="text-surface-400 hover:text-surface-600 dark:hover:text-surface-300 flex items-center gap-1 cursor-pointer transition-colors"
         @click="loadHistory"
       >
         <RefreshCw class="w-3.5 h-3.5" :class="{ 'animate-spin': isLoading }" />
-        Segarkan
+        <span>Segarkan</span>
       </button>
     </div>
 
@@ -116,72 +141,86 @@ function isMyMessage(msg: ChatMessage) {
       ref="chatContainer"
       class="flex-1 overflow-y-auto py-4 space-y-3 pr-2 scrollbar-thin"
     >
-      <div v-if="isLoading">
+      <div v-if="isLoading" class="space-y-3">
         <UiSkeleton :rows="5" />
       </div>
 
-      <UiErrorState v-else-if="error" :message="error" @retry="loadHistory" />
-
-      <div v-else-if="!messages.length" class="h-full flex flex-col items-center justify-center text-center p-6 text-surface-400">
-        <MessageSquare class="w-10 h-10 mb-2 stroke-1" />
-        <p class="text-sm font-medium text-surface-700 dark:text-surface-300">Belum ada pesan di kelas ini</p>
-        <p class="text-xs text-surface-400 mt-0.5">Kirim pesan pertama untuk memulai percakapan kelas.</p>
+      <div v-else-if="error" class="text-center py-8">
+        <p class="text-sm text-rose-500">{{ error }}</p>
+        <UiButton variant="outline" size="sm" class="mt-2" @click="loadHistory">
+          Coba Lagi
+        </UiButton>
       </div>
 
+      <div v-else-if="messages.length === 0" class="flex flex-col items-center justify-center h-full text-center py-12">
+        <div class="w-12 h-12 rounded-2xl bg-surface-100 dark:bg-surface-800 flex items-center justify-center text-surface-400 mb-3">
+          <MessageSquare class="w-6 h-6" />
+        </div>
+        <p class="text-sm font-semibold text-surface-700 dark:text-surface-300">Belum ada obrolan</p>
+        <p class="text-xs text-surface-400 max-w-xs mt-1">
+          Mulai diskusi dengan guru dan teman sekelas Anda di ruangan ini!
+        </p>
+      </div>
+
+      <!-- Chat Bubbles -->
       <template v-else>
         <div
           v-for="msg in messages"
           :key="msg.id"
-          class="flex items-end gap-2.5 max-w-[85%]"
-          :class="isMyMessage(msg) ? 'ml-auto flex-row-reverse' : 'mr-auto'"
+          :class="[
+            'flex flex-col max-w-[80%] sm:max-w-[70%]',
+            isMyMessage(msg) ? 'ml-auto items-end' : 'mr-auto items-start'
+          ]"
         >
-          <UiAvatar
+          <!-- Sender name for other users -->
+          <span
             v-if="!isMyMessage(msg)"
-            :name="msg.user?.name || 'User'"
-            :src="msg.user?.avatar"
-            size="xs"
-            class="shrink-0 mb-1"
-          />
+            class="text-[11px] font-medium text-surface-500 dark:text-surface-400 mb-1 px-1"
+          >
+            {{ msg.user_name || (msg as any).user?.name || 'Anggota Kelas' }}
+          </span>
 
-          <div class="flex flex-col" :class="isMyMessage(msg) ? 'items-end' : 'items-start'">
-            <span v-if="!isMyMessage(msg)" class="text-[11px] font-medium text-surface-500 dark:text-surface-400 mb-1 px-1">
-              {{ msg.user?.name }}
-            </span>
-
-            <div
-              class="px-4 py-2.5 rounded-2xl text-sm leading-relaxed"
-              :class="isMyMessage(msg)
-                ? 'bg-brand-600 text-white rounded-br-none'
-                : 'bg-surface-100 dark:bg-surface-800 text-surface-900 dark:text-surface-100 rounded-bl-none border border-surface-200/50 dark:border-surface-700/50'"
-            >
-              <p class="whitespace-pre-wrap break-words">{{ msg.message || msg.content }}</p>
-            </div>
-
-            <span class="text-[10px] text-surface-400 mt-1 px-1">
-              {{ formatDate(msg.created_at, { hour: '2-digit', minute: '2-digit' }) }}
-            </span>
+          <!-- Bubble content -->
+          <div
+            :class="[
+              'px-4 py-2.5 rounded-2xl text-sm leading-relaxed break-words shadow-sm',
+              isMyMessage(msg)
+                ? 'bg-brand-600 text-white rounded-br-xs'
+                : 'bg-surface-100 dark:bg-surface-800 text-surface-900 dark:text-surface-100 rounded-bl-xs'
+            ]"
+          >
+            {{ msg.message || (msg as any).content }}
           </div>
+
+          <!-- Timestamp -->
+          <span class="text-[10px] text-surface-400 mt-1 px-1 flex items-center gap-1">
+            <Clock class="w-2.5 h-2.5" />
+            {{ formatRelativeTime(msg.created_at) }}
+          </span>
         </div>
       </template>
     </div>
 
-    <!-- Message Input Bar -->
+    <!-- Input Form -->
     <div class="pt-3 border-t border-surface-200 dark:border-surface-800">
-      <form @submit.prevent="submitMessage" class="flex items-center gap-2">
+      <form class="flex items-center gap-2" @submit.prevent="submitMessage">
         <input
           v-model="inputText"
           type="text"
-          placeholder="Tulis pesan..."
-          class="flex-1 px-4 py-2.5 bg-surface-50 dark:bg-surface-800/80 border border-surface-200 dark:border-surface-700 rounded-xl text-sm text-surface-900 dark:text-surface-100 placeholder-surface-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-colors"
+          placeholder="Tulis pesan ke kelas..."
+          class="flex-1 px-4 py-2.5 text-sm rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800 text-surface-900 dark:text-surface-100 focus:outline-none focus:ring-2 focus:ring-brand-500 transition-all placeholder:text-surface-400"
           :disabled="isSending"
-          @keydown.enter.exact.prevent="submitMessage"
+          @keydown.enter.prevent="submitMessage"
         />
         <UiButton
           type="submit"
+          variant="primary"
+          size="md"
           :disabled="!inputText.trim() || isSending"
-          class="shrink-0 px-4"
+          :loading="isSending"
         >
           <Send class="w-4 h-4" />
+          <span class="hidden sm:inline">Kirim</span>
         </UiButton>
       </form>
     </div>
