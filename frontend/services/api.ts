@@ -87,8 +87,8 @@ export class ApiClient {
 
       // If response is wrapped in standard { success: true, data: ... }
       if (data && typeof data === 'object' && 'data' in data && 'success' in data) {
-        // If data contains token, persist to localStorage
-        if (data.data && typeof data.data === 'object' && data.data.token) {
+        // Only persist JWT auth token for explicit auth endpoints (prevent LiveKit room tokens from overwriting user session)
+        if (endpoint.includes('/auth/') && data.data && typeof data.data === 'object' && data.data.token) {
           if (typeof window !== 'undefined') {
             localStorage.setItem('lms_token', data.data.token)
             localStorage.setItem('token', data.data.token)
