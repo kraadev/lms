@@ -57,15 +57,23 @@ async function handleLogin() {
   serverError.value = ''
 
   try {
-    const user = await auth.login({ email: form.email, password: form.password })
+    await auth.login({ email: form.email, password: form.password })
     
     // Connect WebSocket after login
-    const { connect } = useWebSocket()
-    connect()
+    try {
+      const { connect } = useWebSocket()
+      connect()
+    } catch (e) {
+      console.warn('WebSocket connect warning:', e)
+    }
 
     // Fetch notifications
-    const notifStore = useNotificationsStore()
-    notifStore.fetchNotifications()
+    try {
+      const notifStore = useNotificationsStore()
+      notifStore.fetchNotifications()
+    } catch (e) {
+      console.warn('Notifications fetch warning:', e)
+    }
 
     const redirect = (route.query.redirect as string) || '/dashboard'
     await navigateTo(redirect)
