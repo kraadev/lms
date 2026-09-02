@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import {
   Mic, MicOff, Video, VideoOff, ScreenShare, PhoneOff,
-  Users, MessageSquare, Shield, Settings, Volume2, Maximize2, Monitor, Activity
+  Users, MessageSquare, Shield, Settings, Volume2, Maximize2, Monitor, Activity, Copy
 } from 'lucide-vue-next'
 import { meetingsService } from '~/services/meetings'
 import type { Meeting, LiveKitJoinResponse } from '~/types'
@@ -337,8 +337,44 @@ async function endMeetingForAll() {
   }
 }
 
+function copyMeetingLink() {
+  if (typeof window !== 'undefined') {
+    navigator.clipboard.writeText(window.location.href)
+    toast.success('Tautan Disalin', 'Link meeting berhasil disalin ke clipboard')
+  }
+}
+
 const isHost = computed(() => {
   return meeting.value?.host_id === auth.user?.id || meeting.value?.host?.id === auth.user?.id || auth.isAdmin
+})
+
+// Dynamic Adaptive Grid Classes
+const gridClasses = computed(() => {
+  if (isScreenSharing.value) {
+    return 'w-full lg:w-80 grid grid-cols-2 lg:grid-cols-1 gap-3 overflow-y-auto'
+  }
+  const count = participants.value.length
+  if (count <= 1) {
+    return 'flex-1 max-w-4xl w-full mx-auto flex items-center justify-center p-2'
+  }
+  if (count === 2) {
+    return 'flex-1 max-w-5xl w-full mx-auto grid grid-cols-1 md:grid-cols-2 gap-4 items-center justify-center p-2'
+  }
+  if (count <= 4) {
+    return 'flex-1 max-w-5xl w-full mx-auto grid grid-cols-2 gap-4 items-center justify-center p-2'
+  }
+  return 'flex-1 w-full mx-auto grid grid-cols-2 lg:grid-cols-3 gap-4 items-center justify-center p-2'
+})
+
+const tileClasses = computed(() => {
+  if (isScreenSharing.value) {
+    return 'aspect-video w-full'
+  }
+  const count = participants.value.length
+  if (count <= 1) {
+    return 'w-full max-w-3xl aspect-video max-h-[75vh]'
+  }
+  return 'aspect-video w-full'
 })
 </script>
 
@@ -381,6 +417,18 @@ const isHost = computed(() => {
 
     <!-- Main Content Stage -->
     <div class="flex-1 flex overflow-hidden relative">
+      <!-- Waiting / Solo Banner Indicator -->
+      <Transition enter-active-class="transition duration-200 ease-out" enter-from-class="opacity-0 -translate-y-4" enter-to-class="opacity-100 translate-y-0">
+        <div v-if="participants.length <= 1 && !isScreenSharing && !isLoading && !error" class="absolute top-4 left-1/2 -translate-x-1/2 z-20 px-4 py-2 bg-surface-900/90 backdrop-blur-md border border-surface-700/60 rounded-full text-xs text-surface-300 flex items-center gap-2.5 shadow-xl">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+          <span>Ruang kelas aktif · Menunggu siswa bergabung</span>
+          <button @click="copyMeetingLink" class="ml-1 px-2.5 py-1 rounded-md bg-brand-600 hover:bg-brand-500 text-white font-semibold text-[11px] transition-colors flex items-center gap-1 cursor-pointer">
+            <Copy class="w-3 h-3" />
+            <span>Salin Link</span>
+          </button>
+        </div>
+      </Transition>
+
       <!-- Loading State -->
       <div v-if="isLoading" class="flex-1 flex flex-col items-center justify-center gap-3">
         <div class="w-10 h-10 border-4 border-brand-500 border-t-transparent rounded-full animate-spin" />
@@ -397,9 +445,9 @@ const isHost = computed(() => {
       </div>
 
       <!-- Live Meeting Stage -->
-      <div v-else class="flex-1 flex flex-col lg:flex-row p-4 gap-4 overflow-hidden">
+      <div v-else class="flex-1 flex flex-col lg:flex-row p-4 gap-4 overflow-hidden items-center justify-center">
         <!-- Screen Share Stage if active -->
-        <div v-if="isScreenSharing" class="flex-1 bg-black rounded-2xl border border-surface-800 overflow-hidden relative flex items-center justify-center">
+        <div v-if="isScreenSharing" class="flex-1 w-full bg-black rounded-2xl border border-surface-800 overflow-hidden relative flex items-center justify-center">
           <video
             :ref="attachScreenVideo"
             autoplay
@@ -412,21 +460,15 @@ const isHost = computed(() => {
           </div>
         </div>
 
-        <!-- Video Grid -->
-        <div
-          :class="[
-            'p-2 overflow-y-auto grid gap-4 items-center justify-center',
-            isScreenSharing
-              ? 'w-full lg:w-72 grid-cols-2 lg:grid-cols-1'
-              : 'flex-1 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'
-          ]"
-        >
+        <!-- Video Grid (Centered & Adaptive) -->
+        <div :class="gridClasses">
           <!-- Participant Tile -->
           <div
             v-for="p in participants"
             :key="p.id"
             :class="[
-              'relative aspect-video bg-surface-900 rounded-2xl overflow-hidden border transition-all duration-150 flex items-center justify-center shadow-elevated group',
+              tileClasses,
+              'relative bg-surface-900 rounded-2xl overflow-hidden border transition-all duration-200 flex items-center justify-center shadow-elevated group',
               p.isLocal && micVolume > 8
                 ? 'border-emerald-500 ring-2 ring-emerald-500/50 shadow-emerald-500/20'
                 : 'border-surface-800'
