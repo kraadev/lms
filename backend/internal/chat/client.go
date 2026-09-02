@@ -166,6 +166,77 @@ func (c *Client) readPump() {
 			payloadBytes, _ := json.Marshal(broadcastEvent)
 			c.hub.BroadcastToRoom(roomKey, payloadBytes)
 
+		case "meeting.join":
+			var p struct {
+				MeetingID int64 `json:"meeting_id"`
+				IsAudio   bool  `json:"is_audio"`
+				IsVideo   bool  `json:"is_video"`
+			}
+			if err := json.Unmarshal(incoming.Payload, &p); err != nil || p.MeetingID <= 0 {
+				c.sendError("BAD_REQUEST", "Valid meeting_id is required")
+				continue
+			}
+
+			roomKey := fmt.Sprintf("meeting:%d", p.MeetingID)
+			c.hub.JoinRoom(c, roomKey)
+
+			// Get all existing peers in this room
+			peers := c.hub.GetRoomPeers(roomKey)
+
+			// Send current peers list to the newly joined user
+			c.sendEvent("meeting.peers", map[string]interface{}{
+				"meeting_id": p.MeetingID,
+				"peers":      peers,
+			})
+
+			// Broadcast to other peers that a new user joined
+			joinedBytes, _ := json.Marshal(OutgoingEvent{
+				Type: "meeting.peer_joined",
+				Payload: map[string]interface{}{
+					"id":             c.user.ID,
+					"name":           c.user.Name,
+					"role":           c.user.Role,
+					"isAudioEnabled": p.IsAudio,
+					"isVideoEnabled": p.IsVideo,
+					"isHost":         c.user.Role == "teacher" || c.user.Role == "admin",
+				},
+			})
+			c.hub.BroadcastToRoom(roomKey, joinedBytes)
+
+		case "meeting.media":
+			var p struct {
+				MeetingID int64 `json:"meeting_id"`
+				IsAudio   bool  `json:"is_audio"`
+				IsVideo   bool  `json:"is_video"`
+			}
+			if err := json.Unmarshal(incoming.Payload, &p); err == nil && p.MeetingID > 0 {
+				roomKey := fmt.Sprintf("meeting:%d", p.MeetingID)
+				mediaBytes, _ := json.Marshal(OutgoingEvent{
+					Type: "meeting.peer_media",
+					Payload: map[string]interface{}{
+						"user_id":        c.user.ID,
+						"isAudioEnabled": p.IsAudio,
+						"isVideoEnabled": p.IsVideo,
+					},
+				})
+				c.hub.BroadcastToRoom(roomKey, mediaBytes)
+			}
+
+		case "meeting.leave":
+			var p struct {
+				MeetingID int64 `json:"meeting_id"`
+			}
+			if err := json.Unmarshal(incoming.Payload, &p); err == nil && p.MeetingID > 0 {
+				roomKey := fmt.Sprintf("meeting:%d", p.MeetingID)
+				leaveBytes, _ := json.Marshal(OutgoingEvent{
+					Type: "meeting.peer_left",
+					Payload: map[string]interface{}{
+						"user_id": c.user.ID,
+					},
+				})
+				c.hub.BroadcastToRoom(roomKey, leaveBytes)
+			}
+
 		default:
 			c.sendError("UNKNOWN_EVENT", fmt.Sprintf("Unknown event type: %s", incoming.Type))
 		}

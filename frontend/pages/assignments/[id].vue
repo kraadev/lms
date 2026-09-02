@@ -39,7 +39,8 @@ async function loadData() {
     assignment.value = await assignmentsService.getById(assignmentId.value)
     
     if (auth.isTeacher || auth.isAdmin) {
-      submissions.value = await assignmentsService.getSubmissions(assignmentId.value)
+      const subData: any = await assignmentsService.getSubmissions(assignmentId.value)
+      submissions.value = Array.isArray(subData) ? subData : (subData?.submissions || [])
     }
   } catch (err: any) {
     error.value = err?.message || 'Gagal memuat detail tugas'
@@ -310,11 +311,11 @@ function isPastDue(dateStr: string): boolean {
       <div v-if="auth.isTeacher || auth.isAdmin" class="space-y-4">
         <div class="flex items-center justify-between">
           <h3 class="text-base font-semibold text-surface-900 dark:text-surface-100">
-            Daftar Pengumpulan Siswa ({{ submissions.length }})
+            Daftar Pengumpulan Siswa ({{ (submissions || []).length }})
           </h3>
         </div>
 
-        <div v-if="!submissions.length">
+        <div v-if="!submissions || !submissions.length">
           <UiEmptyState
             :icon="ClipboardList"
             title="Belum ada pengumpulan"
@@ -324,7 +325,7 @@ function isPastDue(dateStr: string): boolean {
 
         <div v-else class="divide-y divide-surface-100 dark:divide-surface-800 rounded-xl border border-surface-200 dark:border-surface-800 bg-white dark:bg-surface-900 overflow-hidden shadow-soft">
           <div
-            v-for="sub in submissions"
+            v-for="sub in (submissions || [])"
             :key="sub.id"
             class="p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:bg-surface-50 dark:hover:bg-surface-800/40 transition-colors"
           >

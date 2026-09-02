@@ -25,14 +25,14 @@ export interface ParticipantTrackInfo {
 }
 
 export function useLiveKit() {
-  const room = useState<Room | null>('livekit_room', () => null)
-  const connectionState = useState<ConnectionState>('livekit_connection_state', () => ConnectionState.Disconnected)
-  const participants = useState<ParticipantTrackInfo[]>('livekit_participants', () => [])
-  const activeSpeakers = useState<string[]>('livekit_active_speakers', () => [])
-  const isScreenSharing = useState<boolean>('livekit_screen_sharing', () => false)
-  const localAudioTrack = useState<LocalAudioTrack | null>('livekit_local_audio', () => null)
-  const localVideoTrack = useState<LocalVideoTrack | null>('livekit_local_video', () => null)
-  const error = useState<string | null>('livekit_error', () => null)
+  const room = ref<Room | null>(null)
+  const connectionState = ref<ConnectionState>(ConnectionState.Disconnected)
+  const participants = ref<ParticipantTrackInfo[]>([])
+  const activeSpeakers = ref<string[]>([])
+  const isScreenSharing = ref<boolean>(false)
+  const localAudioTrack = ref<LocalAudioTrack | null>(null)
+  const localVideoTrack = ref<LocalVideoTrack | null>(null)
+  const error = ref<string | null>(null)
 
   function updateParticipantsList(currentRoom: Room) {
     const list: ParticipantTrackInfo[] = []

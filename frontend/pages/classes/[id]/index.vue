@@ -6,6 +6,14 @@ import {
 import { classesService } from '~/services/classes'
 import type { Class } from '~/types'
 
+import ClassOverviewTab from '~/components/classes/ClassOverviewTab.vue'
+import ClassMaterialsTab from '~/components/classes/ClassMaterialsTab.vue'
+import ClassAssignmentsTab from '~/components/classes/ClassAssignmentsTab.vue'
+import ClassQuizzesTab from '~/components/classes/ClassQuizzesTab.vue'
+import ClassMembersTab from '~/components/classes/ClassMembersTab.vue'
+import ClassChatTab from '~/components/classes/ClassChatTab.vue'
+import ClassMeetingTab from '~/components/classes/ClassMeetingTab.vue'
+
 definePageMeta({ middleware: 'auth' })
 
 const route = useRoute()

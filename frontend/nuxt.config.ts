@@ -1,3 +1,5 @@
+import process from 'node:process'
+
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
   compatibilityDate: '2025-01-01',
@@ -43,6 +45,27 @@ export default defineNuxtConfig({
   devServer: {
     port: 3000,
     host: '0.0.0.0'
+  },
+
+  nitro: {
+    routeRules: {
+      '/api/**': { proxy: 'http://127.0.0.1:8080/api/**' }
+    }
+  },
+
+  vite: {
+    server: {
+      allowedHosts: true,
+      watch: {
+        ignored: ['**/backend/**', '**/.git/**', '**/uploads/**', '**/.system_generated/**']
+      },
+      proxy: {
+        '/api': {
+          target: 'http://127.0.0.1:8080',
+          changeOrigin: true
+        }
+      }
+    }
   },
 
   typescript: {

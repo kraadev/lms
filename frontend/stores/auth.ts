@@ -18,9 +18,20 @@ export const useAuthStore = defineStore('auth', () => {
     isLoading.value = true
     error.value = null
     try {
-      const response = await authService.login(credentials)
-      user.value = response.user
-      return response.user
+      const response: any = await authService.login(credentials)
+      
+      const userData = response?.user || response?.data?.user || response
+      const token = response?.token || response?.data?.token
+
+      if (token && typeof window !== 'undefined') {
+        localStorage.setItem('lms_token', token)
+        localStorage.setItem('token', token)
+        document.cookie = `lms_token=${token}; path=/; max-age=86400`
+      }
+
+      user.value = userData
+      isInitialized.value = true
+      return userData
     } catch (err: any) {
       error.value = err.message || 'Login gagal. Periksa kembali email dan password Anda.'
       throw err
@@ -36,20 +47,38 @@ export const useAuthStore = defineStore('auth', () => {
     } catch (err) {
       console.warn('Logout error (ignoring client state reset):', err)
     } finally {
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('lms_token')
+        localStorage.removeItem('token')
+        document.cookie = 'lms_token=; path=/; max-age=0'
+      }
       user.value = null
+      isInitialized.value = true
       isLoading.value = false
       navigateTo('/login')
     }
   }
 
   async function restoreSession(): Promise<User | null> {
-    if (isInitialized.value) return user.value
+    if (isInitialized.value && user.value) return user.value
 
     isLoading.value = true
     try {
-      const currentUser = await authService.getMe()
-      user.value = currentUser
-      return currentUser
+      const token = typeof window !== 'undefined' ? (localStorage.getItem('lms_token') || localStorage.getItem('token')) : null
+      if (!token) {
+        user.value = null
+        return null
+      }
+
+      const currentUser: any = await authService.getMe()
+      const userData = currentUser?.user || currentUser?.data || currentUser
+      if (userData && userData.id) {
+        user.value = userData
+        return userData
+      }
+
+      user.value = null
+      return null
     } catch (err) {
       user.value = null
       return null

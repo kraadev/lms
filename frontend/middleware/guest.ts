@@ -1,10 +1,15 @@
 import { useAuthStore } from '~/stores/auth'
 
 export default defineNuxtRouteMiddleware(async () => {
-  const auth = useAuthStore()
+  const nuxtApp = useNuxtApp()
+  const auth = useAuthStore(nuxtApp.$pinia as any)
 
   if (!auth.isInitialized) {
-    await auth.restoreSession()
+    try {
+      await auth.restoreSession()
+    } catch (e) {
+      console.warn('Middleware guest restore warning:', e)
+    }
   }
 
   if (auth.isAuthenticated) {

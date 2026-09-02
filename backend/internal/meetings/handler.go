@@ -8,6 +8,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"lms/internal/middleware"
+	"lms/internal/models"
 	"lms/internal/utils"
 )
 
@@ -126,8 +127,10 @@ func (h *Handler) End(w http.ResponseWriter, r *http.Request) {
 
 	canManage, err := h.accessController.CheckClassManagement(user.ID, user.Role, meeting.ClassID)
 	if err != nil || !canManage {
-		utils.Forbidden(w, "Only the assigned teacher or an admin can end this meeting.")
-		return
+		if meeting.TeacherID != user.ID && user.Role != models.RoleTeacher && user.Role != models.RoleAdmin {
+			utils.Forbidden(w, "Only the assigned teacher, host, or an admin can end this meeting.")
+			return
+		}
 	}
 
 	if err := h.service.EndMeeting(id); err != nil {

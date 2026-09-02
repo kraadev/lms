@@ -4,23 +4,33 @@ export type WsStatus = 'disconnected' | 'connecting' | 'connected' | 'reconnecti
 
 type EventCallback<T = any> = (payload: T) => void
 
+// Module-level singleton state (client-only, non-serializable by SSR)
+const socket = ref<WebSocket | null>(null)
+const status = ref<WsStatus>('disconnected')
+const retryCount = ref<number>(0)
+const activeClassId = ref<number | string | null>(null)
+const activeMeetingData = ref<any>(null)
+const listeners = new Map<string, Set<EventCallback>>()
+let reconnectTimer: any = null
+
 export function useWebSocket() {
   const config = useRuntimeConfig()
-  const wsUrl = config.public.wsUrl || 'ws://localhost:8080/ws'
+  let defaultWs = config.public.wsUrl || 'ws://localhost:8080/ws'
+  if (typeof window !== 'undefined') {
+    const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+    if (window.location.protocol === 'https:' || !window.location.port) {
+      defaultWs = `${proto}//${window.location.host}/ws`
+    } else {
+      defaultWs = `${proto}//${window.location.hostname}:8080/ws`
+    }
+  }
+  const wsUrl = defaultWs
 
-  const socket = useState<WebSocket | null>('ws_socket', () => null)
-  const status = useState<WsStatus>('ws_status', () => 'disconnected')
-  const retryCount = useState<number>('ws_retry_count', () => 0)
-  
-  // Event subscribers map
-  const listeners = new Map<string, Set<EventCallback>>()
-
-  let reconnectTimer: any = null
   const MAX_RETRY_DELAY = 15000
   const BASE_DELAY = 1000
 
   function connect() {
-    if (import.meta.server) return
+    if (import.meta.server || typeof window === 'undefined') return
     if (socket.value && (socket.value.readyState === WebSocket.OPEN || socket.value.readyState === WebSocket.CONNECTING)) {
       return
     }
@@ -28,7 +38,10 @@ export function useWebSocket() {
     status.value = retryCount.value > 0 ? 'reconnecting' : 'connecting'
 
     try {
-      const ws = new WebSocket(wsUrl)
+      const token = localStorage.getItem('lms_token') || localStorage.getItem('token') || ''
+      const urlWithToken = token ? `${wsUrl}${wsUrl.includes('?') ? '&' : '?'}token=${encodeURIComponent(token)}` : wsUrl
+
+      const ws = new WebSocket(urlWithToken)
 
       ws.onopen = () => {
         status.value = 'connected'
@@ -36,6 +49,22 @@ export function useWebSocket() {
         if (reconnectTimer) {
           clearTimeout(reconnectTimer)
           reconnectTimer = null
+        }
+
+        // Auto re-join active class room on open
+        if (activeClassId.value) {
+          ws.send(JSON.stringify({
+            type: 'class.join',
+            payload: { class_id: Number(activeClassId.value) }
+          }))
+        }
+
+        // Auto re-join active meeting room on open
+        if (activeMeetingData.value) {
+          ws.send(JSON.stringify({
+            type: 'meeting.join',
+            payload: activeMeetingData.value
+          }))
         }
       }
 
@@ -45,12 +74,24 @@ export function useWebSocket() {
           if (data && data.type) {
             const callbacks = listeners.get(data.type)
             if (callbacks) {
-              callbacks.forEach(cb => cb(data.payload))
+              callbacks.forEach(cb => {
+                try {
+                  cb(data.payload)
+                } catch (err) {
+                  console.error(`Error in WS event listener for ${data.type}:`, err)
+                }
+              })
             }
             // Also notify wildcard listeners
             const allCallbacks = listeners.get('*')
             if (allCallbacks) {
-              allCallbacks.forEach(cb => cb(data))
+              allCallbacks.forEach(cb => {
+                try {
+                  cb(data)
+                } catch (err) {
+                  console.error('Error in wildcard WS listener:', err)
+                }
+              })
             }
           }
         } catch (e) {
@@ -98,6 +139,7 @@ export function useWebSocket() {
 
   function send<T = any>(type: string, payload: T): boolean {
     if (!socket.value || socket.value.readyState !== WebSocket.OPEN) {
+      connect()
       return false
     }
 
@@ -126,12 +168,48 @@ export function useWebSocket() {
 
   // Helper to join a class chat room
   function joinClassRoom(classId: number | string) {
+    activeClassId.value = classId
+    connect()
     return send('class.join', { class_id: Number(classId) })
   }
 
   // Helper to leave a class chat room
   function leaveClassRoom(classId: number | string) {
+    if (activeClassId.value === classId) {
+      activeClassId.value = null
+    }
     return send('class.leave', { class_id: Number(classId) })
+  }
+
+  // Helper to join a meeting room
+  function joinMeetingRoom(meetingId: number | string, isAudio = true, isVideo = true) {
+    const payload = {
+      meeting_id: Number(meetingId),
+      is_audio: isAudio,
+      is_video: isVideo
+    }
+    activeMeetingData.value = payload
+    connect()
+    return send('meeting.join', payload)
+  }
+
+  // Helper to leave a meeting room
+  function leaveMeetingRoom(meetingId: number | string) {
+    activeMeetingData.value = null
+    return send('meeting.leave', { meeting_id: Number(meetingId) })
+  }
+
+  // Helper to sync meeting media state
+  function sendMeetingMedia(meetingId: number | string, isAudio: boolean, isVideo: boolean) {
+    if (activeMeetingData.value) {
+      activeMeetingData.value.is_audio = isAudio
+      activeMeetingData.value.is_video = isVideo
+    }
+    return send('meeting.media', {
+      meeting_id: Number(meetingId),
+      is_audio: isAudio,
+      is_video: isVideo
+    })
   }
 
   // Helper to send a chat message
@@ -152,6 +230,9 @@ export function useWebSocket() {
     on,
     joinClassRoom,
     leaveClassRoom,
+    joinMeetingRoom,
+    leaveMeetingRoom,
+    sendMeetingMedia,
     sendChatMessage
   }
 }
