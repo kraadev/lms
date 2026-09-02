@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import {
   Mic, MicOff, Video, VideoOff, ScreenShare, PhoneOff,
-  Users, MessageSquare, Shield, Settings, Volume2, Maximize2, Monitor
+  Users, MessageSquare, Shield, Settings, Volume2, Maximize2, Monitor, Activity
 } from 'lucide-vue-next'
 import { meetingsService } from '~/services/meetings'
 import type { Meeting, LiveKitJoinResponse } from '~/types'
@@ -27,6 +27,13 @@ const isCameraOn = ref(true)
 const isScreenSharing = ref(false)
 const activeSidebar = ref<'chat' | 'participants' | null>(null)
 const isEnding = ref(false)
+
+// Realtime Audio Volume Meter (0-100)
+const micVolume = ref(0)
+let audioContext: AudioContext | null = null
+let analyser: AnalyserNode | null = null
+let micSource: MediaStreamAudioSourceNode | null = null
+let animFrame: number | null = null
 
 // DOM Video Elements & Media Streams
 const localVideoEl = ref<HTMLVideoElement | null>(null)
@@ -61,6 +68,51 @@ function attachScreenVideo(el: HTMLVideoElement | null) {
   }
 }
 
+function setupAudioAnalyser(stream: MediaStream) {
+  if (typeof window === 'undefined') return
+  const audioTracks = stream.getAudioTracks()
+  if (!audioTracks.length) return
+
+  try {
+    const AudioCtx = window.AudioContext || (window as any).webkitAudioContext
+    if (!AudioCtx) return
+
+    if (!audioContext || audioContext.state === 'closed') {
+      audioContext = new AudioCtx()
+    }
+    if (audioContext.state === 'suspended') {
+      audioContext.resume()
+    }
+
+    analyser = audioContext.createAnalyser()
+    analyser.fftSize = 64
+    analyser.smoothingTimeConstant = 0.3
+
+    micSource = audioContext.createMediaStreamSource(stream)
+    micSource.connect(analyser)
+
+    const dataArray = new Uint8Array(analyser.frequencyBinCount)
+
+    function loop() {
+      if (!isMicOn.value || !analyser) {
+        micVolume.value = 0
+      } else {
+        analyser.getByteFrequencyData(dataArray)
+        let sum = 0
+        for (let i = 0; i < dataArray.length; i++) {
+          sum += dataArray[i]
+        }
+        const avg = sum / dataArray.length
+        micVolume.value = Math.min(100, Math.round((avg / 100) * 100))
+      }
+      animFrame = requestAnimationFrame(loop)
+    }
+    loop()
+  } catch (err) {
+    console.warn('Audio analyser setup error:', err)
+  }
+}
+
 async function startMediaStreams() {
   if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
     console.warn('getUserMedia not supported in this environment')
@@ -80,6 +132,8 @@ async function startMediaStreams() {
     isCameraOn.value = true
     isMicOn.value = true
 
+    setupAudioAnalyser(stream)
+
     await nextTick()
     if (localVideoEl.value) {
       localVideoEl.value.srcObject = stream
@@ -92,6 +146,7 @@ async function startMediaStreams() {
       localStream.value = audioStream
       isCameraOn.value = false
       isMicOn.value = true
+      setupAudioAnalyser(audioStream)
     } catch (aErr) {
       console.warn('Audio fallback also failed:', aErr)
       isCameraOn.value = false
@@ -134,6 +189,10 @@ async function initMeeting() {
 onMounted(initMeeting)
 
 onBeforeUnmount(() => {
+  if (animFrame) cancelAnimationFrame(animFrame)
+  if (audioContext && audioContext.state !== 'closed') {
+    audioContext.close()
+  }
   if (localStream.value) {
     localStream.value.getTracks().forEach(t => t.stop())
   }
@@ -147,6 +206,7 @@ async function toggleMic() {
     const next = !isMicOn.value
     localStream.value.getAudioTracks().forEach(t => { t.enabled = next })
     isMicOn.value = next
+    if (!next) micVolume.value = 0
   } else if (!isMicOn.value) {
     try {
       const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true })
@@ -155,12 +215,14 @@ async function toggleMic() {
       } else {
         localStream.value = audioStream
       }
+      setupAudioAnalyser(audioStream)
       isMicOn.value = true
     } catch (e: any) {
       toast.warning('Mikrofon', 'Tidak dapat mengakses mikrofon: ' + (e.message || 'Izin ditolak'))
     }
   } else {
     isMicOn.value = false
+    micVolume.value = 0
   }
 
   const local = participants.value.find(p => p.isLocal)
@@ -249,6 +311,8 @@ async function toggleScreenShare() {
 }
 
 function leaveMeeting() {
+  if (animFrame) cancelAnimationFrame(animFrame)
+  if (audioContext && audioContext.state !== 'closed') audioContext.close()
   if (localStream.value) localStream.value.getTracks().forEach(t => t.stop())
   if (screenStream.value) screenStream.value.getTracks().forEach(t => t.stop())
   const returnUrl = meeting.value?.class_id ? `/classes/${meeting.value.class_id}` : '/dashboard'
@@ -258,6 +322,8 @@ function leaveMeeting() {
 async function endMeetingForAll() {
   isEnding.value = true
   try {
+    if (animFrame) cancelAnimationFrame(animFrame)
+    if (audioContext && audioContext.state !== 'closed') audioContext.close()
     if (localStream.value) localStream.value.getTracks().forEach(t => t.stop())
     if (screenStream.value) screenStream.value.getTracks().forEach(t => t.stop())
     await meetingsService.end(meetingId.value)
@@ -293,7 +359,7 @@ const isHost = computed(() => {
       <div class="flex items-center gap-2">
         <button
           type="button"
-          class="p-2 rounded-xl text-surface-400 hover:text-white hover:bg-surface-800 transition-colors"
+          class="p-2 rounded-xl text-surface-400 hover:text-white hover:bg-surface-800 transition-colors cursor-pointer"
           :class="{ 'bg-surface-800 text-white': activeSidebar === 'participants' }"
           title="Daftar Peserta"
           @click="activeSidebar = activeSidebar === 'participants' ? null : 'participants'"
@@ -303,7 +369,7 @@ const isHost = computed(() => {
 
         <button
           type="button"
-          class="p-2 rounded-xl text-surface-400 hover:text-white hover:bg-surface-800 transition-colors"
+          class="p-2 rounded-xl text-surface-400 hover:text-white hover:bg-surface-800 transition-colors cursor-pointer"
           :class="{ 'bg-surface-800 text-white': activeSidebar === 'chat' }"
           title="Obrolan Meeting"
           @click="activeSidebar = activeSidebar === 'chat' ? null : 'chat'"
@@ -359,7 +425,12 @@ const isHost = computed(() => {
           <div
             v-for="p in participants"
             :key="p.id"
-            class="relative aspect-video bg-surface-900 rounded-2xl overflow-hidden border border-surface-800 flex items-center justify-center shadow-elevated group"
+            :class="[
+              'relative aspect-video bg-surface-900 rounded-2xl overflow-hidden border transition-all duration-150 flex items-center justify-center shadow-elevated group',
+              p.isLocal && micVolume > 8
+                ? 'border-emerald-500 ring-2 ring-emerald-500/50 shadow-emerald-500/20'
+                : 'border-surface-800'
+            ]"
           >
             <!-- Real Local Camera Video Stream -->
             <video
@@ -384,7 +455,14 @@ const isHost = computed(() => {
                 <span v-if="p.isHost" class="px-1.5 py-0.5 rounded bg-brand-600 text-[10px] font-bold">Host</span>
               </div>
 
-              <div class="flex items-center gap-1.5 shrink-0">
+              <div class="flex items-center gap-2 shrink-0">
+                <!-- Audio Equalizer Indicator -->
+                <div v-if="p.isLocal && isMicOn" class="flex items-end gap-0.5 h-3">
+                  <span class="w-1 bg-emerald-400 rounded-full transition-all duration-75" :style="{ height: `${Math.max(20, Math.min(100, micVolume * 1.5))}%` }" />
+                  <span class="w-1 bg-emerald-400 rounded-full transition-all duration-75" :style="{ height: `${Math.max(30, Math.min(100, micVolume * 2.2))}%` }" />
+                  <span class="w-1 bg-emerald-400 rounded-full transition-all duration-75" :style="{ height: `${Math.max(20, Math.min(100, micVolume * 1.1))}%` }" />
+                </div>
+
                 <Mic v-if="p.isAudioEnabled" class="w-3.5 h-3.5 text-emerald-400" />
                 <MicOff v-else class="w-3.5 h-3.5 text-rose-400" />
               </div>
@@ -405,7 +483,7 @@ const isHost = computed(() => {
           </h3>
           <button
             type="button"
-            class="text-surface-400 hover:text-white text-xs"
+            class="text-surface-400 hover:text-white text-xs cursor-pointer"
             @click="activeSidebar = null"
           >
             Tutup
@@ -447,9 +525,23 @@ const isHost = computed(() => {
 
     <!-- Bottom Control Bar -->
     <footer class="h-20 px-6 bg-surface-900 border-t border-surface-800 flex items-center justify-between z-10">
-      <div class="hidden sm:flex items-center gap-2 text-xs text-surface-400">
-        <Shield class="w-4 h-4 text-emerald-400" />
-        <span>Tersambung Terenkripsi WebRTC</span>
+      <div class="hidden sm:flex items-center gap-3 text-xs text-surface-400">
+        <div class="flex items-center gap-1.5">
+          <Shield class="w-4 h-4 text-emerald-400" />
+          <span>WebRTC Aktif</span>
+        </div>
+
+        <!-- Live Volume Visual Meter -->
+        <div v-if="isMicOn" class="flex items-center gap-2 pl-3 border-l border-surface-800">
+          <Volume2 class="w-3.5 h-3.5 text-emerald-400" />
+          <div class="w-20 h-1.5 bg-surface-800 rounded-full overflow-hidden">
+            <div
+              class="h-full bg-emerald-400 transition-all duration-75 rounded-full"
+              :style="{ width: `${micVolume}%` }"
+            />
+          </div>
+          <span class="text-[10px] font-mono text-emerald-400">{{ micVolume }}%</span>
+        </div>
       </div>
 
       <!-- Main Action Controls -->
@@ -457,7 +549,7 @@ const isHost = computed(() => {
         <!-- Mic Toggle -->
         <button
           type="button"
-          class="w-12 h-12 rounded-2xl flex items-center justify-center transition-all shadow-md cursor-pointer"
+          class="w-12 h-12 rounded-2xl flex items-center justify-center transition-all shadow-md cursor-pointer relative"
           :class="isMicOn
             ? 'bg-surface-800 hover:bg-surface-700 text-white'
             : 'bg-rose-600 hover:bg-rose-700 text-white'"
@@ -466,6 +558,12 @@ const isHost = computed(() => {
         >
           <Mic v-if="isMicOn" class="w-5 h-5" />
           <MicOff v-else class="w-5 h-5" />
+          
+          <!-- Mic Ping dot when speaking -->
+          <span
+            v-if="isMicOn && micVolume > 8"
+            class="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-emerald-400 ring-2 ring-surface-900 animate-ping"
+          />
         </button>
 
         <!-- Camera Toggle -->
