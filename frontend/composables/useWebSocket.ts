@@ -9,7 +9,13 @@ const listeners = new Map<string, Set<EventCallback>>()
 
 export function useWebSocket() {
   const config = useRuntimeConfig()
-  const wsUrl = config.public.wsUrl || 'ws://localhost:8080/ws'
+  let defaultWs = config.public.wsUrl || 'ws://localhost:8080/ws'
+  if (typeof window !== 'undefined') {
+    const host = window.location.hostname
+    const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+    defaultWs = `${proto}//${host}:8080/ws`
+  }
+  const wsUrl = defaultWs
 
   const socket = useState<WebSocket | null>('ws_socket', () => null)
   const status = useState<WsStatus>('ws_status', () => 'disconnected')

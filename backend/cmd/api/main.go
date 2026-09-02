@@ -113,9 +113,9 @@ func main() {
 	r.Use(chimiddleware.Recoverer)
 	r.Use(chimiddleware.Timeout(60 * time.Second))
 
-	// CORS Setup
+	// Global CORS Setup - allow all local network, IP, and tunnel origins
 	r.Use(cors.Handler(cors.Options{
-		AllowedOrigins:   cfg.CORSAllowedUrls,
+		AllowOriginFunc:  func(r *http.Request, origin string) bool { return true },
 		AllowedMethods:   []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
 		ExposedHeaders:   []string{"Link"},
@@ -306,8 +306,8 @@ func main() {
 		})
 	})
 
-	// Start Server Gracefully
-	serverAddr := fmt.Sprintf(":%s", cfg.Port)
+	// Start Server Gracefully on 0.0.0.0
+	serverAddr := fmt.Sprintf("0.0.0.0:%s", cfg.Port)
 	srv := &http.Server{
 		Addr:         serverAddr,
 		Handler:      r,
@@ -318,8 +318,8 @@ func main() {
 
 	go func() {
 		log.Printf("==================================================")
-		log.Printf("🚀 LMS Backend running at http://localhost%s", serverAddr)
-		log.Printf("📡 WebSocket available at ws://localhost%s/ws", serverAddr)
+		log.Printf("🚀 LMS Backend running at http://%s (listening on all interfaces)", serverAddr)
+		log.Printf("📡 WebSocket available at ws://%s/ws", serverAddr)
 		log.Printf("📦 Storage Directory: %s", cfg.UploadDir)
 		log.Printf("==================================================")
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
