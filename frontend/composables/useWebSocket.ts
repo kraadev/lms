@@ -4,8 +4,14 @@ export type WsStatus = 'disconnected' | 'connecting' | 'connected' | 'reconnecti
 
 type EventCallback<T = any> = (payload: T) => void
 
-// Global module-level subscriber registry (singleton across all components)
+// Module-level singleton state (client-only, non-serializable by SSR)
+const socket = ref<WebSocket | null>(null)
+const status = ref<WsStatus>('disconnected')
+const retryCount = ref<number>(0)
+const activeClassId = ref<number | string | null>(null)
+const activeMeetingData = ref<any>(null)
 const listeners = new Map<string, Set<EventCallback>>()
+let reconnectTimer: any = null
 
 export function useWebSocket() {
   const config = useRuntimeConfig()
@@ -20,18 +26,11 @@ export function useWebSocket() {
   }
   const wsUrl = defaultWs
 
-  const socket = useState<WebSocket | null>('ws_socket', () => null)
-  const status = useState<WsStatus>('ws_status', () => 'disconnected')
-  const retryCount = useState<number>('ws_retry_count', () => 0)
-  const activeClassId = useState<number | string | null>('ws_active_class_id', () => null)
-  const activeMeetingData = useState<any>('ws_active_meeting_data', () => null)
-
-  let reconnectTimer: any = null
   const MAX_RETRY_DELAY = 15000
   const BASE_DELAY = 1000
 
   function connect() {
-    if (import.meta.server) return
+    if (import.meta.server || typeof window === 'undefined') return
     if (socket.value && (socket.value.readyState === WebSocket.OPEN || socket.value.readyState === WebSocket.CONNECTING)) {
       return
     }
@@ -39,7 +38,7 @@ export function useWebSocket() {
     status.value = retryCount.value > 0 ? 'reconnecting' : 'connecting'
 
     try {
-      const token = typeof window !== 'undefined' ? (localStorage.getItem('lms_token') || localStorage.getItem('token') || '') : ''
+      const token = localStorage.getItem('lms_token') || localStorage.getItem('token') || ''
       const urlWithToken = token ? `${wsUrl}${wsUrl.includes('?') ? '&' : '?'}token=${encodeURIComponent(token)}` : wsUrl
 
       const ws = new WebSocket(urlWithToken)
@@ -140,7 +139,6 @@ export function useWebSocket() {
 
   function send<T = any>(type: string, payload: T): boolean {
     if (!socket.value || socket.value.readyState !== WebSocket.OPEN) {
-      // Connect if not connected yet
       connect()
       return false
     }
