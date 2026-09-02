@@ -186,7 +186,7 @@ async function handleCreateMeeting() {
     </div>
 
     <!-- Create Modal -->
-    <UiModal v-model="showCreateModal" title="Mulai Meeting Kelas Online" size="md">
+    <UiModal :show="showCreateModal" @close="showCreateModal = false" title="Mulai Meeting Kelas Online" size="md">
       <form @submit.prevent="handleCreateMeeting" class="space-y-4">
         <div>
           <label class="block text-xs font-semibold text-surface-700 dark:text-surface-300 mb-1">Pilih Kelas</label>

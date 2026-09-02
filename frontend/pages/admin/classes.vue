@@ -217,7 +217,7 @@ async function handleDelete(cls: Class) {
     </div>
 
     <!-- Create/Edit Modal -->
-    <UiModal v-model="showModal" :title="editingClass ? 'Edit Data Kelas' : 'Buat Kelas Baru'" size="md">
+    <UiModal :show="showModal" @close="showModal = false" :title="editingClass ? 'Edit Data Kelas' : 'Buat Kelas Baru'" size="md">
       <form @submit.prevent="handleSave" class="space-y-4">
         <UiInput
           v-model="form.title"

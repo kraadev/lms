@@ -87,7 +87,7 @@ watch(searchQuery, () => {
             <span class="truncate">{{ s.email }}</span>
           </p>
           <div class="mt-3">
-            <UiBadge variant="info" size="xs">Siswa Aktif</UiBadge>
+            <UiBadge variant="info" size="sm">Siswa Aktif</UiBadge>
           </div>
         </div>
       </div>

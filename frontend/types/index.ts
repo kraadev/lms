@@ -19,6 +19,7 @@ export interface AuthResponse {
 export interface Class {
   id: number
   title: string
+  name?: string
   code: string
   description?: string
   academic_year: string
@@ -66,11 +67,15 @@ export interface Assignment {
   id: number
   class_id: number
   class_title?: string
+  class?: Class
   title: string
   instructions: string
   due_date: string
   points: number
   attachments?: MaterialAttachment[]
+  attachment_url?: string
+  attachment_name?: string
+  attachment_path?: string
   created_at: string
   submission?: AssignmentSubmission
   my_submission?: AssignmentSubmission
@@ -164,10 +169,12 @@ export interface Meeting {
   status: MeetingStatus
   host_id: number
   host?: User
+  room_name?: string
   started_at?: string
   ended_at?: string
   participant_count?: number
   livekit_room_name?: string
+  created_at?: string
 }
 
 export interface LiveKitJoinResponse {

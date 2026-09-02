@@ -10,7 +10,7 @@ useSeoMeta({
 })
 
 const auth = useAuthStore()
-const { push: toastPush } = useToast()
+const toast = useToast()
 const route = useRoute()
 
 const form = reactive({

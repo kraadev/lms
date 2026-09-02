@@ -64,7 +64,7 @@ onMounted(loadData)
 
     <!-- Active Class Chat Component -->
     <div v-if="selectedClassId" class="bg-white dark:bg-surface-900 rounded-2xl border border-surface-200 dark:border-surface-800 p-4 shadow-soft">
-      <ClassChatTab :class-id="selectedClassId" />
+      <ClassChatTab :class-id="String(selectedClassId)" />
     </div>
 
     <div v-else-if="!isLoading" class="bg-white dark:bg-surface-900 rounded-2xl border border-surface-200 dark:border-surface-800 p-8 shadow-soft">
