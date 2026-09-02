@@ -61,7 +61,7 @@ function attachLocalVideo(el: any) {
     if (el.srcObject !== localStream.value) {
       el.srcObject = localStream.value
     }
-    el.play().catch(err => console.warn('Play video catch:', err))
+    el.play().catch((err: any) => console.warn('Play video catch:', err))
   }
 }
 
@@ -72,7 +72,7 @@ function attachScreenVideo(el: any) {
     if (el.srcObject !== screenStream.value) {
       el.srcObject = screenStream.value
     }
-    el.play().catch(err => console.warn('Play screen catch:', err))
+    el.play().catch((err: any) => console.warn('Play screen catch:', err))
   }
 }
 
