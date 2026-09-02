@@ -29,8 +29,8 @@ const activeSidebar = ref<'chat' | 'participants' | null>(null)
 const isEnding = ref(false)
 
 // DOM Video Elements & Media Streams
-const localVideoRef = ref<HTMLVideoElement | null>(null)
-const screenVideoRef = ref<HTMLVideoElement | null>(null)
+const localVideoEl = ref<HTMLVideoElement | null>(null)
+const screenVideoEl = ref<HTMLVideoElement | null>(null)
 const localStream = ref<MediaStream | null>(null)
 const screenStream = ref<MediaStream | null>(null)
 
@@ -39,32 +39,61 @@ const participants = ref<any[]>([])
 
 useSeoMeta({ title: computed(() => meeting.value?.title ? `${meeting.value.title} - Kelas Online` : 'Ruang Kelas Online') })
 
+function attachLocalVideo(el: HTMLVideoElement | null) {
+  if (!el) return
+  localVideoEl.value = el
+  if (localStream.value && isCameraOn.value) {
+    if (el.srcObject !== localStream.value) {
+      el.srcObject = localStream.value
+    }
+    el.play().catch(err => console.warn('Play video catch:', err))
+  }
+}
+
+function attachScreenVideo(el: HTMLVideoElement | null) {
+  if (!el) return
+  screenVideoEl.value = el
+  if (screenStream.value && isScreenSharing.value) {
+    if (el.srcObject !== screenStream.value) {
+      el.srcObject = screenStream.value
+    }
+    el.play().catch(err => console.warn('Play screen catch:', err))
+  }
+}
+
 async function startMediaStreams() {
-  if (typeof navigator === 'undefined' || !navigator.mediaDevices) return
+  if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
+    console.warn('getUserMedia not supported in this environment')
+    return
+  }
 
   try {
     const stream = await navigator.mediaDevices.getUserMedia({
-      video: true,
+      video: {
+        width: { ideal: 1280 },
+        height: { ideal: 720 },
+        facingMode: 'user'
+      },
       audio: true
     })
     localStream.value = stream
     isCameraOn.value = true
     isMicOn.value = true
 
-    nextTick(() => {
-      if (localVideoRef.value) {
-        localVideoRef.value.srcObject = stream
-      }
-    })
+    await nextTick()
+    if (localVideoEl.value) {
+      localVideoEl.value.srcObject = stream
+      localVideoEl.value.play().catch(e => console.warn('Local video play catch:', e))
+    }
   } catch (err: any) {
-    console.warn('getUserMedia warning:', err)
-    // If video fails, try audio only
+    console.warn('Full getUserMedia failed, trying audio-only fallback:', err)
     try {
       const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true })
       localStream.value = audioStream
       isCameraOn.value = false
       isMicOn.value = true
-    } catch {
+    } catch (aErr) {
+      console.warn('Audio fallback also failed:', aErr)
       isCameraOn.value = false
       isMicOn.value = false
     }
@@ -151,7 +180,13 @@ async function toggleCamera() {
     toast.info('Kamera dinonaktifkan')
   } else {
     try {
-      const videoStream = await navigator.mediaDevices.getUserMedia({ video: true })
+      const videoStream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+          facingMode: 'user'
+        }
+      })
       const vTrack = videoStream.getVideoTracks()[0]
       if (localStream.value) {
         localStream.value.addTrack(vTrack)
@@ -160,11 +195,11 @@ async function toggleCamera() {
       }
       isCameraOn.value = true
 
-      nextTick(() => {
-        if (localVideoRef.value && localStream.value) {
-          localVideoRef.value.srcObject = localStream.value
-        }
-      })
+      await nextTick()
+      if (localVideoEl.value && localStream.value) {
+        localVideoEl.value.srcObject = localStream.value
+        localVideoEl.value.play().catch(e => console.warn('Play camera catch:', e))
+      }
       toast.success('Kamera aktif')
     } catch (e: any) {
       toast.warning('Kamera', 'Tidak dapat mengakses kamera: ' + (e.message || 'Izin ditolak'))
@@ -198,11 +233,11 @@ async function toggleScreenShare() {
         screenStream.value = null
       }
 
-      nextTick(() => {
-        if (screenVideoRef.value) {
-          screenVideoRef.value.srcObject = stream
-        }
-      })
+      await nextTick()
+      if (screenVideoEl.value) {
+        screenVideoEl.value.srcObject = stream
+        screenVideoEl.value.play().catch(e => console.warn('Play screen catch:', e))
+      }
       toast.success('Berbagi Layar Dimulai')
     } catch (e: any) {
       isScreenSharing.value = false
@@ -300,7 +335,7 @@ const isHost = computed(() => {
         <!-- Screen Share Stage if active -->
         <div v-if="isScreenSharing" class="flex-1 bg-black rounded-2xl border border-surface-800 overflow-hidden relative flex items-center justify-center">
           <video
-            ref="screenVideoRef"
+            :ref="attachScreenVideo"
             autoplay
             playsinline
             class="w-full h-full object-contain"
@@ -328,8 +363,8 @@ const isHost = computed(() => {
           >
             <!-- Real Local Camera Video Stream -->
             <video
-              v-show="p.isLocal && isCameraOn && localStream"
-              ref="localVideoRef"
+              v-if="p.isLocal && isCameraOn"
+              :ref="attachLocalVideo"
               autoplay
               playsinline
               muted
@@ -337,13 +372,13 @@ const isHost = computed(() => {
             />
 
             <!-- Video disabled avatar fallback -->
-            <div v-if="!p.isVideoEnabled || (p.isLocal && !isCameraOn)" class="flex flex-col items-center justify-center gap-3">
+            <div v-else class="flex flex-col items-center justify-center gap-3">
               <UiAvatar :name="p.name" size="xl" class="ring-4 ring-surface-800" />
               <p class="text-xs text-surface-400">Kamera dinonaktifkan</p>
             </div>
 
             <!-- Participant Label & Status Bottom overlay -->
-            <div class="absolute bottom-3 left-3 right-3 flex items-center justify-between px-3 py-1.5 bg-black/60 backdrop-blur-md rounded-xl text-xs">
+            <div class="absolute bottom-3 left-3 right-3 flex items-center justify-between px-3 py-1.5 bg-black/60 backdrop-blur-md rounded-xl text-xs z-10">
               <div class="flex items-center gap-2 truncate">
                 <span class="font-medium truncate">{{ p.name }} {{ p.isLocal ? '(Anda)' : '' }}</span>
                 <span v-if="p.isHost" class="px-1.5 py-0.5 rounded bg-brand-600 text-[10px] font-bold">Host</span>
@@ -422,7 +457,7 @@ const isHost = computed(() => {
         <!-- Mic Toggle -->
         <button
           type="button"
-          class="w-12 h-12 rounded-2xl flex items-center justify-center transition-all shadow-md"
+          class="w-12 h-12 rounded-2xl flex items-center justify-center transition-all shadow-md cursor-pointer"
           :class="isMicOn
             ? 'bg-surface-800 hover:bg-surface-700 text-white'
             : 'bg-rose-600 hover:bg-rose-700 text-white'"
@@ -436,7 +471,7 @@ const isHost = computed(() => {
         <!-- Camera Toggle -->
         <button
           type="button"
-          class="w-12 h-12 rounded-2xl flex items-center justify-center transition-all shadow-md"
+          class="w-12 h-12 rounded-2xl flex items-center justify-center transition-all shadow-md cursor-pointer"
           :class="isCameraOn
             ? 'bg-surface-800 hover:bg-surface-700 text-white'
             : 'bg-rose-600 hover:bg-rose-700 text-white'"
@@ -450,7 +485,7 @@ const isHost = computed(() => {
         <!-- Screen Share -->
         <button
           type="button"
-          class="w-12 h-12 rounded-2xl flex items-center justify-center transition-all shadow-md"
+          class="w-12 h-12 rounded-2xl flex items-center justify-center transition-all shadow-md cursor-pointer"
           :class="isScreenSharing
             ? 'bg-brand-600 hover:bg-brand-700 text-white'
             : 'bg-surface-800 hover:bg-surface-700 text-white'"
