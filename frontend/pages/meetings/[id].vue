@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import {
   Mic, MicOff, Video, VideoOff, ScreenShare, PhoneOff,
-  Users, MessageSquare, Shield, Settings, Volume2, Maximize2
+  Users, MessageSquare, Shield, Settings, Volume2, Maximize2, Monitor
 } from 'lucide-vue-next'
 import { meetingsService } from '~/services/meetings'
 import type { Meeting, LiveKitJoinResponse } from '~/types'
@@ -28,10 +28,48 @@ const isScreenSharing = ref(false)
 const activeSidebar = ref<'chat' | 'participants' | null>(null)
 const isEnding = ref(false)
 
+// DOM Video Elements & Media Streams
+const localVideoRef = ref<HTMLVideoElement | null>(null)
+const screenVideoRef = ref<HTMLVideoElement | null>(null)
+const localStream = ref<MediaStream | null>(null)
+const screenStream = ref<MediaStream | null>(null)
+
 // In-meeting participants (local user + remote peers)
 const participants = ref<any[]>([])
 
 useSeoMeta({ title: computed(() => meeting.value?.title ? `${meeting.value.title} - Kelas Online` : 'Ruang Kelas Online') })
+
+async function startMediaStreams() {
+  if (typeof navigator === 'undefined' || !navigator.mediaDevices) return
+
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: true,
+      audio: true
+    })
+    localStream.value = stream
+    isCameraOn.value = true
+    isMicOn.value = true
+
+    nextTick(() => {
+      if (localVideoRef.value) {
+        localVideoRef.value.srcObject = stream
+      }
+    })
+  } catch (err: any) {
+    console.warn('getUserMedia warning:', err)
+    // If video fails, try audio only
+    try {
+      const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      localStream.value = audioStream
+      isCameraOn.value = false
+      isMicOn.value = true
+    } catch {
+      isCameraOn.value = false
+      isMicOn.value = false
+    }
+  }
+}
 
 async function initMeeting() {
   isLoading.value = true
@@ -49,11 +87,14 @@ async function initMeeting() {
         id: auth.user?.id,
         name: auth.user?.name || 'Anda',
         isLocal: true,
-        isHost: meeting.value.host_id === auth.user?.id || meeting.value.host?.id === auth.user?.id,
+        isHost: meeting.value.host_id === auth.user?.id || meeting.value.host?.id === auth.user?.id || auth.isAdmin,
         isAudioEnabled: isMicOn.value,
         isVideoEnabled: isCameraOn.value
       }
     ]
+
+    // Start local camera/mic stream
+    await startMediaStreams()
   } catch (err: any) {
     error.value = err?.message || 'Gagal terhubung ke ruang meeting'
   } finally {
@@ -63,26 +104,118 @@ async function initMeeting() {
 
 onMounted(initMeeting)
 
-function toggleMic() {
-  isMicOn.value = !isMicOn.value
+onBeforeUnmount(() => {
+  if (localStream.value) {
+    localStream.value.getTracks().forEach(t => t.stop())
+  }
+  if (screenStream.value) {
+    screenStream.value.getTracks().forEach(t => t.stop())
+  }
+})
+
+async function toggleMic() {
+  if (localStream.value && localStream.value.getAudioTracks().length > 0) {
+    const next = !isMicOn.value
+    localStream.value.getAudioTracks().forEach(t => { t.enabled = next })
+    isMicOn.value = next
+  } else if (!isMicOn.value) {
+    try {
+      const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      if (localStream.value) {
+        audioStream.getAudioTracks().forEach(t => localStream.value?.addTrack(t))
+      } else {
+        localStream.value = audioStream
+      }
+      isMicOn.value = true
+    } catch (e: any) {
+      toast.warning('Mikrofon', 'Tidak dapat mengakses mikrofon: ' + (e.message || 'Izin ditolak'))
+    }
+  } else {
+    isMicOn.value = false
+  }
+
   const local = participants.value.find(p => p.isLocal)
   if (local) local.isAudioEnabled = isMicOn.value
   toast.info(isMicOn.value ? 'Mikrofon aktif' : 'Mikrofon dibisukan')
 }
 
-function toggleCamera() {
-  isCameraOn.value = !isCameraOn.value
+async function toggleCamera() {
+  if (isCameraOn.value) {
+    if (localStream.value) {
+      localStream.value.getVideoTracks().forEach(t => {
+        t.stop()
+        localStream.value?.removeTrack(t)
+      })
+    }
+    isCameraOn.value = false
+    toast.info('Kamera dinonaktifkan')
+  } else {
+    try {
+      const videoStream = await navigator.mediaDevices.getUserMedia({ video: true })
+      const vTrack = videoStream.getVideoTracks()[0]
+      if (localStream.value) {
+        localStream.value.addTrack(vTrack)
+      } else {
+        localStream.value = videoStream
+      }
+      isCameraOn.value = true
+
+      nextTick(() => {
+        if (localVideoRef.value && localStream.value) {
+          localVideoRef.value.srcObject = localStream.value
+        }
+      })
+      toast.success('Kamera aktif')
+    } catch (e: any) {
+      toast.warning('Kamera', 'Tidak dapat mengakses kamera: ' + (e.message || 'Izin ditolak'))
+    }
+  }
+
   const local = participants.value.find(p => p.isLocal)
   if (local) local.isVideoEnabled = isCameraOn.value
-  toast.info(isCameraOn.value ? 'Kamera aktif' : 'Kamera dinonaktifkan')
 }
 
-function toggleScreenShare() {
-  isScreenSharing.value = !isScreenSharing.value
-  toast.info(isScreenSharing.value ? 'Berbagi layar dimulai' : 'Berbagi layar dihentikan')
+async function toggleScreenShare() {
+  if (isScreenSharing.value) {
+    if (screenStream.value) {
+      screenStream.value.getTracks().forEach(t => t.stop())
+      screenStream.value = null
+    }
+    isScreenSharing.value = false
+    toast.info('Berbagi layar dihentikan')
+  } else {
+    try {
+      if (!navigator.mediaDevices?.getDisplayMedia) {
+        toast.error('Browser tidak mendukung screen share')
+        return
+      }
+      const stream = await navigator.mediaDevices.getDisplayMedia({ video: true })
+      screenStream.value = stream
+      isScreenSharing.value = true
+
+      stream.getVideoTracks()[0].onended = () => {
+        isScreenSharing.value = false
+        screenStream.value = null
+      }
+
+      nextTick(() => {
+        if (screenVideoRef.value) {
+          screenVideoRef.value.srcObject = stream
+        }
+      })
+      toast.success('Berbagi Layar Dimulai')
+    } catch (e: any) {
+      isScreenSharing.value = false
+      if (e.name !== 'NotAllowedError') {
+        toast.warning('Berbagi Layar', e.message || 'Gagal membagikan layar')
+      }
+    }
+  }
 }
 
 function leaveMeeting() {
+  if (localStream.value) localStream.value.getTracks().forEach(t => t.stop())
+  if (screenStream.value) screenStream.value.getTracks().forEach(t => t.stop())
   const returnUrl = meeting.value?.class_id ? `/classes/${meeting.value.class_id}` : '/dashboard'
   navigateTo(returnUrl)
 }
@@ -90,6 +223,8 @@ function leaveMeeting() {
 async function endMeetingForAll() {
   isEnding.value = true
   try {
+    if (localStream.value) localStream.value.getTracks().forEach(t => t.stop())
+    if (screenStream.value) screenStream.value.getTracks().forEach(t => t.stop())
     await meetingsService.end(meetingId.value)
     toast.success('Sesi pertemuan diakhiri')
     const returnUrl = meeting.value?.class_id ? `/classes/${meeting.value.class_id}` : '/dashboard'
@@ -148,7 +283,7 @@ const isHost = computed(() => {
       <!-- Loading State -->
       <div v-if="isLoading" class="flex-1 flex flex-col items-center justify-center gap-3">
         <div class="w-10 h-10 border-4 border-brand-500 border-t-transparent rounded-full animate-spin" />
-        <p class="text-sm text-surface-400">Menyambungkan ke ruang LiveKit...</p>
+        <p class="text-sm text-surface-400">Menyambungkan ke ruang LiveKit WebRTC...</p>
       </div>
 
       <!-- Error State -->
@@ -160,35 +295,64 @@ const isHost = computed(() => {
         <UiButton variant="outline" size="sm" @click="leaveMeeting">Kembali ke Kelas</UiButton>
       </div>
 
-      <!-- Video Grid -->
-      <div v-else class="flex-1 p-4 overflow-y-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 items-center justify-center">
-        <!-- Participant Tile -->
+      <!-- Live Meeting Stage -->
+      <div v-else class="flex-1 flex flex-col lg:flex-row p-4 gap-4 overflow-hidden">
+        <!-- Screen Share Stage if active -->
+        <div v-if="isScreenSharing" class="flex-1 bg-black rounded-2xl border border-surface-800 overflow-hidden relative flex items-center justify-center">
+          <video
+            ref="screenVideoRef"
+            autoplay
+            playsinline
+            class="w-full h-full object-contain"
+          />
+          <div class="absolute top-3 left-3 px-3 py-1 rounded-lg bg-black/70 backdrop-blur-sm text-xs flex items-center gap-2 text-emerald-400 border border-surface-800">
+            <Monitor class="w-4 h-4" />
+            <span>Layar yang Anda Bagikan</span>
+          </div>
+        </div>
+
+        <!-- Video Grid -->
         <div
-          v-for="p in participants"
-          :key="p.id"
-          class="relative aspect-video bg-surface-900 rounded-2xl overflow-hidden border border-surface-800 flex items-center justify-center shadow-elevated group"
+          :class="[
+            'p-2 overflow-y-auto grid gap-4 items-center justify-center',
+            isScreenSharing
+              ? 'w-full lg:w-72 grid-cols-2 lg:grid-cols-1'
+              : 'flex-1 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'
+          ]"
         >
-          <!-- Video active display (mock stream / camera) -->
-          <div v-if="p.isVideoEnabled" class="w-full h-full bg-gradient-to-tr from-surface-800 to-surface-700 flex items-center justify-center">
-            <UiAvatar :name="p.name" size="xl" />
-          </div>
+          <!-- Participant Tile -->
+          <div
+            v-for="p in participants"
+            :key="p.id"
+            class="relative aspect-video bg-surface-900 rounded-2xl overflow-hidden border border-surface-800 flex items-center justify-center shadow-elevated group"
+          >
+            <!-- Real Local Camera Video Stream -->
+            <video
+              v-show="p.isLocal && isCameraOn && localStream"
+              ref="localVideoRef"
+              autoplay
+              playsinline
+              muted
+              class="w-full h-full object-cover -scale-x-100"
+            />
 
-          <!-- Video disabled avatar fallback -->
-          <div v-else class="flex flex-col items-center justify-center gap-3">
-            <UiAvatar :name="p.name" size="xl" class="ring-4 ring-surface-800" />
-            <p class="text-xs text-surface-400">Kamera dinonaktifkan</p>
-          </div>
-
-          <!-- Participant Label & Status Bottom overlay -->
-          <div class="absolute bottom-3 left-3 right-3 flex items-center justify-between px-3 py-1.5 bg-black/60 backdrop-blur-md rounded-xl text-xs">
-            <div class="flex items-center gap-2 truncate">
-              <span class="font-medium truncate">{{ p.name }} {{ p.isLocal ? '(Anda)' : '' }}</span>
-              <span v-if="p.isHost" class="px-1.5 py-0.5 rounded bg-brand-600 text-[10px] font-bold">Host</span>
+            <!-- Video disabled avatar fallback -->
+            <div v-if="!p.isVideoEnabled || (p.isLocal && !isCameraOn)" class="flex flex-col items-center justify-center gap-3">
+              <UiAvatar :name="p.name" size="xl" class="ring-4 ring-surface-800" />
+              <p class="text-xs text-surface-400">Kamera dinonaktifkan</p>
             </div>
 
-            <div class="flex items-center gap-1.5 shrink-0">
-              <Mic v-if="p.isAudioEnabled" class="w-3.5 h-3.5 text-emerald-400" />
-              <MicOff v-else class="w-3.5 h-3.5 text-rose-400" />
+            <!-- Participant Label & Status Bottom overlay -->
+            <div class="absolute bottom-3 left-3 right-3 flex items-center justify-between px-3 py-1.5 bg-black/60 backdrop-blur-md rounded-xl text-xs">
+              <div class="flex items-center gap-2 truncate">
+                <span class="font-medium truncate">{{ p.name }} {{ p.isLocal ? '(Anda)' : '' }}</span>
+                <span v-if="p.isHost" class="px-1.5 py-0.5 rounded bg-brand-600 text-[10px] font-bold">Host</span>
+              </div>
+
+              <div class="flex items-center gap-1.5 shrink-0">
+                <Mic v-if="p.isAudioEnabled" class="w-3.5 h-3.5 text-emerald-400" />
+                <MicOff v-else class="w-3.5 h-3.5 text-rose-400" />
+              </div>
             </div>
           </div>
         </div>
@@ -220,25 +384,27 @@ const isHost = computed(() => {
             :key="p.id"
             class="flex items-center justify-between p-2.5 rounded-xl bg-surface-800/60"
           >
-            <div class="flex items-center gap-2.5">
-              <UiAvatar :name="p.name" size="xs" />
-              <div class="text-xs truncate">
-                <p class="font-medium truncate">{{ p.name }}</p>
-                <p v-if="p.isLocal" class="text-[10px] text-surface-400">Lokal</p>
+            <div class="flex items-center gap-2.5 min-w-0">
+              <UiAvatar :name="p.name" size="sm" />
+              <div class="min-w-0">
+                <p class="text-xs font-semibold truncate">{{ p.name }} {{ p.isLocal ? '(Anda)' : '' }}</p>
+                <span v-if="p.isHost" class="text-[10px] text-brand-400 font-medium">Pengajar / Host</span>
               </div>
             </div>
 
-            <div class="flex items-center gap-2 text-surface-400">
+            <div class="flex items-center gap-2">
               <Mic v-if="p.isAudioEnabled" class="w-3.5 h-3.5 text-emerald-400" />
               <MicOff v-else class="w-3.5 h-3.5 text-rose-400" />
+              <Video v-if="p.isVideoEnabled" class="w-3.5 h-3.5 text-emerald-400" />
+              <VideoOff v-else class="w-3.5 h-3.5 text-surface-500" />
             </div>
           </div>
         </div>
 
         <!-- Chat Content -->
-        <div v-else-if="activeSidebar === 'chat'" class="flex-1 flex flex-col p-4">
+        <div v-else class="flex-1 flex flex-col p-4">
           <div class="flex-1 flex items-center justify-center text-center text-xs text-surface-400">
-            Pesan dalam sesi live akan muncul di sini.
+            Pesan dalam sesi live akan tersinkronisasi realtime di sini.
           </div>
         </div>
       </aside>
@@ -248,7 +414,7 @@ const isHost = computed(() => {
     <footer class="h-20 px-6 bg-surface-900 border-t border-surface-800 flex items-center justify-between z-10">
       <div class="hidden sm:flex items-center gap-2 text-xs text-surface-400">
         <Shield class="w-4 h-4 text-emerald-400" />
-        <span>Tersambung Terenkripsi</span>
+        <span>Tersambung Terenkripsi WebRTC</span>
       </div>
 
       <!-- Main Action Controls -->
@@ -297,7 +463,7 @@ const isHost = computed(() => {
         <!-- Leave Button -->
         <button
           type="button"
-          class="px-5 h-12 rounded-2xl bg-rose-600 hover:bg-rose-700 text-white font-semibold text-xs flex items-center gap-2 shadow-md shadow-rose-600/20 transition-all"
+          class="px-5 h-12 rounded-2xl bg-rose-600 hover:bg-rose-700 text-white font-semibold text-xs flex items-center gap-2 shadow-md shadow-rose-600/20 transition-all cursor-pointer"
           title="Tinggalkan Meeting"
           @click="leaveMeeting"
         >

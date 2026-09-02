@@ -10,11 +10,21 @@ export const useNotificationsStore = defineStore('notifications', () => {
   async function fetchNotifications() {
     isLoading.value = true
     try {
-      const data = await notificationsService.getAll()
-      notifications.value = data.notifications || []
-      unreadCount.value = data.unread_count || 0
+      const data: any = await notificationsService.getAll()
+      if (Array.isArray(data)) {
+        notifications.value = data
+        unreadCount.value = data.filter((n: any) => !n.is_read).length
+      } else if (data && typeof data === 'object') {
+        notifications.value = data.notifications || []
+        unreadCount.value = data.unread_count ?? (notifications.value || []).filter(n => !n?.is_read).length
+      } else {
+        notifications.value = []
+        unreadCount.value = 0
+      }
     } catch (err) {
-      console.error('Failed to fetch notifications:', err)
+      console.warn('Failed to fetch notifications:', err)
+      notifications.value = []
+      unreadCount.value = 0
     } finally {
       isLoading.value = false
     }

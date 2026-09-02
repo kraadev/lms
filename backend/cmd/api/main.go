@@ -172,34 +172,37 @@ func main() {
 
 		// Users Management
 		r.Route("/users", func(r chi.Router) {
+			r.Get("/", userHandler.List)
 			r.Get("/{id}", userHandler.GetByID)
-			r.Put("/{id}", userHandler.Update)
-			r.Patch("/{id}", userHandler.Update)
 
 			r.Group(func(r chi.Router) {
 				r.Use(middleware.RequireAdmin)
-				r.Get("/", userHandler.List)
 				r.Post("/", userHandler.Create)
+				r.Put("/{id}", userHandler.Update)
+				r.Patch("/{id}", userHandler.Update)
 				r.Delete("/{id}", userHandler.Delete)
 			})
 		})
 
 		// Admin Aliases
 		r.Route("/admin", func(r chi.Router) {
-			r.Use(middleware.RequireAdmin)
 			r.Get("/users", userHandler.List)
-			r.Post("/users", userHandler.Create)
-			r.Get("/users/{id}", userHandler.GetByID)
-			r.Put("/users/{id}", userHandler.Update)
-			r.Patch("/users/{id}", userHandler.Update)
-			r.Delete("/users/{id}", userHandler.Delete)
 
-			r.Get("/classes", classHandler.List)
-			r.Post("/classes", classHandler.Create)
-			r.Get("/classes/{id}", classHandler.GetByID)
-			r.Put("/classes/{id}", classHandler.Update)
-			r.Patch("/classes/{id}", classHandler.Update)
-			r.Delete("/classes/{id}", classHandler.Delete)
+			r.Group(func(r chi.Router) {
+				r.Use(middleware.RequireAdmin)
+				r.Post("/users", userHandler.Create)
+				r.Get("/users/{id}", userHandler.GetByID)
+				r.Put("/users/{id}", userHandler.Update)
+				r.Patch("/users/{id}", userHandler.Update)
+				r.Delete("/users/{id}", userHandler.Delete)
+
+				r.Get("/classes", classHandler.List)
+				r.Post("/classes", classHandler.Create)
+				r.Get("/classes/{id}", classHandler.GetByID)
+				r.Put("/classes/{id}", classHandler.Update)
+				r.Patch("/classes/{id}", classHandler.Update)
+				r.Delete("/classes/{id}", classHandler.Delete)
+			})
 		})
 
 		// Classes Management

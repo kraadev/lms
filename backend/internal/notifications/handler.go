@@ -31,7 +31,19 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	utils.JSON(w, http.StatusOK, notifs)
+	unreadCount := 0
+	for _, n := range notifs {
+		if !n.IsRead {
+			unreadCount++
+		}
+	}
+
+	resp := map[string]interface{}{
+		"notifications": notifs,
+		"unread_count":  unreadCount,
+	}
+
+	utils.JSON(w, http.StatusOK, resp)
 }
 
 func (h *Handler) MarkRead(w http.ResponseWriter, r *http.Request) {
