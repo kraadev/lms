@@ -76,6 +76,9 @@ function attachScreenVideo(el: any) {
   }
 }
 
+let volumeInterval: any = null
+let syncTimer: any = null
+
 function setupAudioAnalyser(stream: MediaStream) {
   if (typeof window === 'undefined') return
   const audioTracks = stream.getAudioTracks()
@@ -93,15 +96,17 @@ function setupAudioAnalyser(stream: MediaStream) {
     }
 
     analyser = audioContext.createAnalyser()
-    analyser.fftSize = 64
-    analyser.smoothingTimeConstant = 0.3
+    analyser.fftSize = 32
+    analyser.smoothingTimeConstant = 0.4
 
     micSource = audioContext.createMediaStreamSource(stream)
     micSource.connect(analyser)
 
     const dataArray = new Uint8Array(analyser.frequencyBinCount)
 
-    function loop() {
+    if (volumeInterval) clearInterval(volumeInterval)
+    // Lightweight 100ms interval (10 FPS) instead of heavy 60fps requestAnimationFrame
+    volumeInterval = setInterval(() => {
       if (!isMicOn.value || !analyser) {
         micVolume.value = 0
       } else {
@@ -111,11 +116,9 @@ function setupAudioAnalyser(stream: MediaStream) {
           sum += dataArray[i]
         }
         const avg = sum / dataArray.length
-        micVolume.value = Math.min(100, Math.round((avg / 100) * 100))
+        micVolume.value = Math.min(100, Math.round((avg / 80) * 100))
       }
-      animFrame = requestAnimationFrame(loop)
-    }
-    loop()
+    }, 100)
   } catch (err) {
     console.warn('Audio analyser setup error:', err)
   }
@@ -130,10 +133,12 @@ async function startMediaStreams() {
   }
 
   try {
+    // Lightweight 480p/720p constraints for ultra-smooth performance
     const stream = await navigator.mediaDevices.getUserMedia({
       video: {
-        width: { ideal: 1280 },
-        height: { ideal: 720 },
+        width: { ideal: 640, max: 1280 },
+        height: { ideal: 480, max: 720 },
+        frameRate: { ideal: 24, max: 30 },
         facingMode: 'user'
       },
       audio: true
@@ -147,7 +152,7 @@ async function startMediaStreams() {
     await nextTick()
     if (localVideoEl.value) {
       localVideoEl.value.srcObject = stream
-      localVideoEl.value.play().catch(e => console.warn('Local video play catch:', e))
+      localVideoEl.value.play().catch((e: any) => console.warn('Local video play catch:', e))
     }
   } catch (err: any) {
     console.warn('Full getUserMedia failed, trying audio-only fallback:', err)
@@ -167,6 +172,32 @@ async function startMediaStreams() {
       isCameraOn.value = false
       isMicOn.value = false
     }
+  }
+}
+
+async function syncActivePeers() {
+  try {
+    const activeList = await meetingsService.getParticipants(meetingId.value)
+    if (Array.isArray(activeList)) {
+      activeList.forEach((peer: any) => {
+        if (peer && peer.id !== auth.user?.id) {
+          const exists = participants.value.some(p => p.id === peer.id)
+          if (!exists) {
+            participants.value.push({
+              id: peer.id,
+              name: peer.name,
+              role: peer.role,
+              isLocal: false,
+              isHost: peer.isHost,
+              isAudioEnabled: peer.isAudioEnabled ?? true,
+              isVideoEnabled: peer.isVideoEnabled ?? false
+            })
+          }
+        }
+      })
+    }
+  } catch (e) {
+    // ignore
   }
 }
 
@@ -264,8 +295,13 @@ async function initMeeting() {
     })
     wsUnsubs.push(unsubLeft)
 
-    // 4. Join meeting room via useWebSocket
+    // 4. Initial REST Peer sync + Join meeting room
+    await syncActivePeers()
     joinMeetingRoom(meetingId.value, isMicOn.value, isCameraOn.value)
+
+    // Periodic sync timer every 3s to guarantee zero missed joins
+    if (syncTimer) clearInterval(syncTimer)
+    syncTimer = setInterval(syncActivePeers, 3000)
 
   } catch (err: any) {
     error.value = err?.message || 'Gagal terhubung ke ruang meeting'
@@ -281,7 +317,16 @@ onBeforeUnmount(() => {
 })
 
 function cleanupStreams() {
+  if (syncTimer) {
+    clearInterval(syncTimer)
+    syncTimer = null
+  }
+  if (volumeInterval) {
+    clearInterval(volumeInterval)
+    volumeInterval = null
+  }
   leaveMeetingRoom(meetingId.value)
+  meetingsService.leave(meetingId.value).catch(() => {})
   wsUnsubs.forEach(unsub => unsub())
   wsUnsubs = []
 

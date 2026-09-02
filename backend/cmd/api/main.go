@@ -97,7 +97,7 @@ func main() {
 	materialHandler := materials.NewHandler(materialService, accessController, storageService)
 	assignmentHandler := assignments.NewHandler(assignmentService, accessController, storageService)
 	quizHandler := quizzes.NewHandler(quizService, accessController)
-	meetingHandler := meetings.NewHandler(meetingService, accessController)
+	meetingHandler := meetings.NewHandler(meetingService, accessController, chatHub)
 	chatHandler := chat.NewHandler(chatHub, chatRepo, accessController, cfg)
 	notifHandler := notifications.NewHandler(notifService)
 
@@ -293,7 +293,9 @@ func main() {
 		// Meetings Management
 		r.Route("/meetings", func(r chi.Router) {
 			r.Get("/{id}", meetingHandler.GetByID)
+			r.Get("/{id}/participants", meetingHandler.GetParticipants)
 			r.Post("/{id}/join", meetingHandler.Join)
+			r.Post("/{id}/leave", meetingHandler.Leave)
 			r.Post("/{id}/end", meetingHandler.End)
 		})
 

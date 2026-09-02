@@ -19,6 +19,16 @@ export const meetingsService = {
     return api.post<LiveKitJoinResponse>(`/meetings/${meetingId}/join`)
   },
 
+  // Fetch current active participants in the room
+  getParticipants(meetingId: number | string): Promise<any[]> {
+    return api.get<any[]>(`/meetings/${meetingId}/participants`)
+  },
+
+  // Leave active meeting
+  leave(meetingId: number | string): Promise<{ message: string }> {
+    return api.post<{ message: string }>(`/meetings/${meetingId}/leave`)
+  },
+
   // Teacher end meeting for everyone
   end(meetingId: number | string): Promise<{ message: string }> {
     return api.post<{ message: string }>(`/meetings/${meetingId}/end`)

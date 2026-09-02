@@ -2,11 +2,14 @@ package meetings
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
+	"sync"
 
 	"github.com/go-chi/chi/v5"
 
+	"lms/internal/chat"
 	"lms/internal/middleware"
 	"lms/internal/models"
 	"lms/internal/utils"
@@ -15,12 +18,17 @@ import (
 type Handler struct {
 	service          *Service
 	accessController *middleware.AccessController
+	hub              *chat.Hub
+	activeMu         sync.RWMutex
+	activePeers      map[int64]map[int64]map[string]interface{}
 }
 
-func NewHandler(service *Service, accessController *middleware.AccessController) *Handler {
+func NewHandler(service *Service, accessController *middleware.AccessController, hub *chat.Hub) *Handler {
 	return &Handler{
 		service:          service,
 		accessController: accessController,
+		hub:              hub,
+		activePeers:      make(map[int64]map[int64]map[string]interface{}),
 	}
 }
 
@@ -112,7 +120,80 @@ func (h *Handler) Join(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Register peer in in-memory active list
+	peerInfo := map[string]interface{}{
+		"id":             user.ID,
+		"name":           user.Name,
+		"role":           user.Role,
+		"isHost":         user.Role == models.RoleTeacher || user.Role == models.RoleAdmin || meeting.TeacherID == user.ID,
+		"isAudioEnabled": true,
+		"isVideoEnabled": false,
+	}
+
+	h.activeMu.Lock()
+	if _, ok := h.activePeers[id]; !ok {
+		h.activePeers[id] = make(map[int64]map[string]interface{})
+	}
+	h.activePeers[id][user.ID] = peerInfo
+	h.activeMu.Unlock()
+
+	// Broadcast peer presence to WebSocket room
+	if h.hub != nil {
+		roomKey := fmt.Sprintf("meeting:%d", id)
+		joinedBytes, _ := json.Marshal(chat.OutgoingEvent{
+			Type:    "meeting.peer_joined",
+			Payload: peerInfo,
+		})
+		h.hub.BroadcastToRoom(roomKey, joinedBytes)
+	}
+
 	utils.JSON(w, http.StatusOK, res)
+}
+
+func (h *Handler) GetParticipants(w http.ResponseWriter, r *http.Request) {
+	id, _ := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+
+	h.activeMu.RLock()
+	peersMap, ok := h.activePeers[id]
+	var list []map[string]interface{}
+	if ok {
+		for _, p := range peersMap {
+			list = append(list, p)
+		}
+	} else {
+		list = []map[string]interface{}{}
+	}
+	h.activeMu.RUnlock()
+
+	utils.JSON(w, http.StatusOK, list)
+}
+
+func (h *Handler) Leave(w http.ResponseWriter, r *http.Request) {
+	user := middleware.GetUser(r)
+	id, _ := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+
+	h.activeMu.Lock()
+	if peersMap, ok := h.activePeers[id]; ok {
+		delete(peersMap, user.ID)
+		if len(peersMap) == 0 {
+			delete(h.activePeers, id)
+		}
+	}
+	h.activeMu.Unlock()
+
+	// Broadcast peer left
+	if h.hub != nil {
+		roomKey := fmt.Sprintf("meeting:%d", id)
+		leaveBytes, _ := json.Marshal(chat.OutgoingEvent{
+			Type: "meeting.peer_left",
+			Payload: map[string]interface{}{
+				"user_id": user.ID,
+			},
+		})
+		h.hub.BroadcastToRoom(roomKey, leaveBytes)
+	}
+
+	utils.JSON(w, http.StatusOK, map[string]string{"message": "Left meeting"})
 }
 
 func (h *Handler) End(w http.ResponseWriter, r *http.Request) {
