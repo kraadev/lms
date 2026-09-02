@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import {
   Mic, MicOff, Video, VideoOff, ScreenShare, PhoneOff,
-  Users, MessageSquare, Shield, Settings, Volume2, Maximize2, Monitor, Activity, Copy
+  Users, MessageSquare, Shield, Settings, Volume2, Maximize2, Monitor, Activity, Copy, AlertTriangle, LogOut
 } from 'lucide-vue-next'
 import { meetingsService } from '~/services/meetings'
 import type { Meeting, LiveKitJoinResponse } from '~/types'
@@ -27,6 +27,7 @@ const isCameraOn = ref(true)
 const isScreenSharing = ref(false)
 const activeSidebar = ref<'chat' | 'participants' | null>(null)
 const isEnding = ref(false)
+const showHostExitModal = ref(false)
 
 // Realtime Audio Volume Meter (0-100)
 const micVolume = ref(0)
@@ -45,6 +46,10 @@ const screenStream = ref<MediaStream | null>(null)
 const participants = ref<any[]>([])
 
 useSeoMeta({ title: computed(() => meeting.value?.title ? `${meeting.value.title} - Kelas Online` : 'Ruang Kelas Online') })
+
+const isHost = computed(() => {
+  return auth.isTeacher || auth.isAdmin || meeting.value?.host_id === auth.user?.id || meeting.value?.host?.id === auth.user?.id
+})
 
 function attachLocalVideo(el: HTMLVideoElement | null) {
   if (!el) return
@@ -171,7 +176,7 @@ async function initMeeting() {
         id: auth.user?.id,
         name: auth.user?.name || 'Anda',
         isLocal: true,
-        isHost: meeting.value.host_id === auth.user?.id || meeting.value.host?.id === auth.user?.id || auth.isAdmin,
+        isHost: isHost.value,
         isAudioEnabled: isMicOn.value,
         isVideoEnabled: isCameraOn.value
       }
@@ -189,6 +194,10 @@ async function initMeeting() {
 onMounted(initMeeting)
 
 onBeforeUnmount(() => {
+  cleanupStreams()
+})
+
+function cleanupStreams() {
   if (animFrame) cancelAnimationFrame(animFrame)
   if (audioContext && audioContext.state !== 'closed') {
     audioContext.close()
@@ -199,7 +208,7 @@ onBeforeUnmount(() => {
   if (screenStream.value) {
     screenStream.value.getTracks().forEach(t => t.stop())
   }
-})
+}
 
 async function toggleMic() {
   if (localStream.value && localStream.value.getAudioTracks().length > 0) {
@@ -310,11 +319,16 @@ async function toggleScreenShare() {
   }
 }
 
+function handleExitClick() {
+  if (isHost.value) {
+    showHostExitModal.value = true
+  } else {
+    leaveMeeting()
+  }
+}
+
 function leaveMeeting() {
-  if (animFrame) cancelAnimationFrame(animFrame)
-  if (audioContext && audioContext.state !== 'closed') audioContext.close()
-  if (localStream.value) localStream.value.getTracks().forEach(t => t.stop())
-  if (screenStream.value) screenStream.value.getTracks().forEach(t => t.stop())
+  cleanupStreams()
   const returnUrl = meeting.value?.class_id ? `/classes/${meeting.value.class_id}` : '/dashboard'
   navigateTo(returnUrl)
 }
@@ -322,17 +336,13 @@ function leaveMeeting() {
 async function endMeetingForAll() {
   isEnding.value = true
   try {
-    if (animFrame) cancelAnimationFrame(animFrame)
-    if (audioContext && audioContext.state !== 'closed') audioContext.close()
-    if (localStream.value) localStream.value.getTracks().forEach(t => t.stop())
-    if (screenStream.value) screenStream.value.getTracks().forEach(t => t.stop())
+    cleanupStreams()
     await meetingsService.end(meetingId.value)
-    toast.success('Sesi pertemuan diakhiri')
+    toast.success('Sesi pertemuan diakhiri untuk semua peserta')
     const returnUrl = meeting.value?.class_id ? `/classes/${meeting.value.class_id}` : '/dashboard'
     await navigateTo(returnUrl)
   } catch (err: any) {
     toast.error(err?.message || 'Gagal mengakhiri meeting')
-  } finally {
     isEnding.value = false
   }
 }
@@ -343,10 +353,6 @@ function copyMeetingLink() {
     toast.success('Tautan Disalin', 'Link meeting berhasil disalin ke clipboard')
   }
 }
-
-const isHost = computed(() => {
-  return meeting.value?.host_id === auth.user?.id || meeting.value?.host?.id === auth.user?.id || auth.isAdmin
-})
 
 // Dynamic Adaptive Grid Classes
 const gridClasses = computed(() => {
@@ -393,6 +399,17 @@ const tileClasses = computed(() => {
       </div>
 
       <div class="flex items-center gap-2">
+        <!-- Host End Meeting Quick Action in Header -->
+        <button
+          v-if="isHost"
+          type="button"
+          class="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-600/20 hover:bg-rose-600 border border-rose-500/30 text-rose-300 hover:text-white text-xs font-semibold transition-all cursor-pointer mr-2"
+          @click="showHostExitModal = true"
+        >
+          <PhoneOff class="w-3.5 h-3.5" />
+          <span>Akhiri Sesi</span>
+        </button>
+
         <button
           type="button"
           class="p-2 rounded-xl text-surface-400 hover:text-white hover:bg-surface-800 transition-colors cursor-pointer"
@@ -635,30 +652,94 @@ const tileClasses = computed(() => {
           <ScreenShare class="w-5 h-5" />
         </button>
 
-        <!-- Leave Button -->
+        <!-- Leave / End Call Button -->
         <button
           type="button"
           class="px-5 h-12 rounded-2xl bg-rose-600 hover:bg-rose-700 text-white font-semibold text-xs flex items-center gap-2 shadow-md shadow-rose-600/20 transition-all cursor-pointer"
-          title="Tinggalkan Meeting"
-          @click="leaveMeeting"
+          :title="isHost ? 'Opsi Keluar & Akhiri Meeting' : 'Tinggalkan Meeting'"
+          @click="handleExitClick"
         >
           <PhoneOff class="w-4 h-4" />
-          <span>Keluar</span>
+          <span>{{ isHost ? 'Selesai / Keluar' : 'Keluar' }}</span>
         </button>
       </div>
 
-      <!-- Host End Meeting Button -->
+      <!-- Host Direct End Meeting Button in Footer -->
       <div class="hidden sm:flex items-center">
-        <UiButton
+        <button
           v-if="isHost"
-          variant="danger"
-          size="sm"
-          :loading="isEnding"
-          @click="endMeetingForAll"
+          type="button"
+          class="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold transition-all shadow-md cursor-pointer flex items-center gap-2"
+          :disabled="isEnding"
+          @click="showHostExitModal = true"
         >
-          Akhiri untuk Semua
-        </UiButton>
+          <PhoneOff class="w-3.5 h-3.5" />
+          <span>Akhiri Sesi untuk Semua</span>
+        </button>
       </div>
     </footer>
+
+    <!-- Host Exit & End Meeting Modal -->
+    <UiModal
+      :show="showHostExitModal"
+      title="Kelola Sesi Pertemuan"
+      @close="showHostExitModal = false"
+    >
+      <div class="space-y-4">
+        <div class="p-4 rounded-xl bg-surface-100 dark:bg-surface-800/80 border border-surface-200 dark:border-surface-700/60 flex items-start gap-3">
+          <AlertTriangle class="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+          <div class="text-xs space-y-1">
+            <p class="font-semibold text-surface-900 dark:text-surface-100">Anda adalah Pengajar / Host pertemuan ini</p>
+            <p class="text-surface-500 dark:text-surface-400 leading-relaxed">
+              Pilih tindakan yang ingin Anda ambil terhadap sesi live kelas ini:
+            </p>
+          </div>
+        </div>
+
+        <div class="space-y-2.5 pt-1">
+          <!-- Option 1: End For All -->
+          <button
+            type="button"
+            class="w-full p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-950/70 border border-rose-200 dark:border-rose-900/60 text-left transition-all group cursor-pointer"
+            :disabled="isEnding"
+            @click="endMeetingForAll"
+          >
+            <div class="flex items-center justify-between mb-1">
+              <div class="flex items-center gap-2 text-rose-600 dark:text-rose-400 font-bold text-sm">
+                <PhoneOff class="w-4 h-4" />
+                <span>Akhiri Sesi untuk Semua Peserta</span>
+              </div>
+              <div v-if="isEnding" class="w-4 h-4 border-2 border-rose-500 border-t-transparent rounded-full animate-spin" />
+            </div>
+            <p class="text-xs text-rose-700/70 dark:text-rose-300/70">
+              Menutup ruangan, memutuskan koneksi semua siswa, dan menandai pertemuan selesai.
+            </p>
+          </button>
+
+          <!-- Option 2: Leave Only -->
+          <button
+            type="button"
+            class="w-full p-4 rounded-2xl bg-surface-50 dark:bg-surface-800 hover:bg-surface-100 dark:hover:bg-surface-700/80 border border-surface-200 dark:border-surface-700 text-left transition-all cursor-pointer"
+            @click="leaveMeeting"
+          >
+            <div class="flex items-center gap-2 text-surface-900 dark:text-surface-100 font-bold text-sm mb-1">
+              <LogOut class="w-4 h-4 text-surface-400" />
+              <span>Tinggalkan Sesi Sementara</span>
+            </div>
+            <p class="text-xs text-surface-500 dark:text-surface-400">
+              Anda keluar dari panggilan, namun siswa tetap berada di dalam ruangan.
+            </p>
+          </button>
+        </div>
+      </div>
+
+      <template #footer>
+        <div class="flex justify-end">
+          <UiButton variant="outline" size="sm" @click="showHostExitModal = false">
+            Batal
+          </UiButton>
+        </div>
+      </template>
+    </UiModal>
   </div>
 </template>
