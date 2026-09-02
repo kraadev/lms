@@ -45,6 +45,9 @@ const screenStream = ref<MediaStream | null>(null)
 // In-meeting participants (local user + remote peers)
 const participants = ref<any[]>([])
 
+const { connect: connectWs, on: onWs, send: sendWs } = useWebSocket()
+let wsUnsubs: (() => void)[] = []
+
 useSeoMeta({ title: computed(() => meeting.value?.title ? `${meeting.value.title} - Kelas Online` : 'Ruang Kelas Online') })
 
 const isHost = computed(() => {
@@ -119,8 +122,10 @@ function setupAudioAnalyser(stream: MediaStream) {
 }
 
 async function startMediaStreams() {
-  if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
-    console.warn('getUserMedia not supported in this environment')
+  if (typeof navigator === 'undefined' || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    console.warn('getUserMedia is not supported on insecure HTTP context in modern browsers')
+    isCameraOn.value = false
+    isMicOn.value = false
     return
   }
 
@@ -147,11 +152,16 @@ async function startMediaStreams() {
   } catch (err: any) {
     console.warn('Full getUserMedia failed, trying audio-only fallback:', err)
     try {
-      const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      localStream.value = audioStream
-      isCameraOn.value = false
-      isMicOn.value = true
-      setupAudioAnalyser(audioStream)
+      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true })
+        localStream.value = audioStream
+        isCameraOn.value = false
+        isMicOn.value = true
+        setupAudioAnalyser(audioStream)
+      } else {
+        isCameraOn.value = false
+        isMicOn.value = false
+      }
     } catch (aErr) {
       console.warn('Audio fallback also failed:', aErr)
       isCameraOn.value = false
@@ -170,11 +180,12 @@ async function initMeeting() {
     // 2. Fetch LiveKit token & server url
     joinData.value = await meetingsService.join(meetingId.value)
 
-    // Setup initial participants list
+    // Setup initial local participant
     participants.value = [
       {
         id: auth.user?.id,
         name: auth.user?.name || 'Anda',
+        role: auth.user?.role,
         isLocal: true,
         isHost: isHost.value,
         isAudioEnabled: isMicOn.value,
@@ -184,6 +195,83 @@ async function initMeeting() {
 
     // Start local camera/mic stream
     await startMediaStreams()
+
+    // 3. Connect to WebSocket room for instant peer discovery
+    connectWs()
+    sendWs('meeting.join', {
+      meeting_id: Number(meetingId.value),
+      is_audio: isMicOn.value,
+      is_video: isCameraOn.value
+    })
+
+    // Listen to existing peers
+    const unsubPeers = onWs('meeting.peers', (payload: any) => {
+      if (payload && Array.isArray(payload.peers)) {
+        payload.peers.forEach((peer: any) => {
+          if (peer.id !== auth.user?.id) {
+            const exists = participants.value.some(p => p.id === peer.id)
+            if (!exists) {
+              participants.value.push({
+                id: peer.id,
+                name: peer.name,
+                role: peer.role,
+                isLocal: false,
+                isHost: peer.isHost,
+                isAudioEnabled: peer.isAudioEnabled ?? true,
+                isVideoEnabled: peer.isVideoEnabled ?? false
+              })
+            }
+          }
+        })
+      }
+    })
+    wsUnsubs.push(unsubPeers)
+
+    // Listen to new incoming peer
+    const unsubJoined = onWs('meeting.peer_joined', (peer: any) => {
+      if (peer && peer.id !== auth.user?.id) {
+        const exists = participants.value.some(p => p.id === peer.id)
+        if (!exists) {
+          participants.value.push({
+            id: peer.id,
+            name: peer.name,
+            role: peer.role,
+            isLocal: false,
+            isHost: peer.isHost,
+            isAudioEnabled: peer.isAudioEnabled ?? true,
+            isVideoEnabled: peer.isVideoEnabled ?? false
+          })
+          toast.info('Peserta Bergabung', `${peer.name} telah masuk ke kelas`)
+        }
+      }
+    })
+    wsUnsubs.push(unsubJoined)
+
+    // Listen to peer media changes
+    const unsubMedia = onWs('meeting.peer_media', (payload: any) => {
+      if (payload) {
+        const p = participants.value.find(item => item.id === payload.user_id)
+        if (p) {
+          p.isAudioEnabled = payload.isAudioEnabled
+          p.isVideoEnabled = payload.isVideoEnabled
+        }
+      }
+    })
+    wsUnsubs.push(unsubMedia)
+
+    // Listen to peer left
+    const unsubLeft = onWs('meeting.peer_left', (payload: any) => {
+      if (payload) {
+        const idx = participants.value.findIndex(item => item.id === payload.user_id)
+        if (idx !== -1) {
+          const removed = participants.value[idx]
+          participants.value.splice(idx, 1)
+          toast.info('Peserta Keluar', `${removed.name} telah meninggalkan kelas`)
+        }
+      }
+    })
+    wsUnsubs.push(unsubLeft)
+
   } catch (err: any) {
     error.value = err?.message || 'Gagal terhubung ke ruang meeting'
   } finally {
@@ -198,6 +286,12 @@ onBeforeUnmount(() => {
 })
 
 function cleanupStreams() {
+  sendWs('meeting.leave', {
+    meeting_id: Number(meetingId.value)
+  })
+  wsUnsubs.forEach(unsub => unsub())
+  wsUnsubs = []
+
   if (animFrame) cancelAnimationFrame(animFrame)
   if (audioContext && audioContext.state !== 'closed') {
     audioContext.close()
@@ -236,6 +330,11 @@ async function toggleMic() {
 
   const local = participants.value.find(p => p.isLocal)
   if (local) local.isAudioEnabled = isMicOn.value
+  sendWs('meeting.media', {
+    meeting_id: Number(meetingId.value),
+    is_audio: isMicOn.value,
+    is_video: isCameraOn.value
+  })
   toast.info(isMicOn.value ? 'Mikrofon aktif' : 'Mikrofon dibisukan')
 }
 
@@ -251,6 +350,10 @@ async function toggleCamera() {
     toast.info('Kamera dinonaktifkan')
   } else {
     try {
+      if (typeof navigator === 'undefined' || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        toast.warning('Kamera', 'Browser membatasi kamera pada koneksi HTTP non-localhost.')
+        return
+      }
       const videoStream = await navigator.mediaDevices.getUserMedia({
         video: {
           width: { ideal: 1280 },
@@ -279,6 +382,11 @@ async function toggleCamera() {
 
   const local = participants.value.find(p => p.isLocal)
   if (local) local.isVideoEnabled = isCameraOn.value
+  sendWs('meeting.media', {
+    meeting_id: Number(meetingId.value),
+    is_audio: isMicOn.value,
+    is_video: isCameraOn.value
+  })
 }
 
 async function toggleScreenShare() {

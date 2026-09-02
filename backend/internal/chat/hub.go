@@ -88,3 +88,26 @@ func (h *Hub) BroadcastToRoom(roomKey string, message []byte) {
 		}
 	}
 }
+
+func (h *Hub) GetRoomPeers(roomKey string) []map[string]interface{} {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+
+	var peers []map[string]interface{}
+	room, ok := h.rooms[roomKey]
+	if !ok {
+		return peers
+	}
+
+	for client := range room {
+		peers = append(peers, map[string]interface{}{
+			"id":             client.user.ID,
+			"name":           client.user.Name,
+			"role":           client.user.Role,
+			"isHost":         client.user.Role == "teacher" || client.user.Role == "admin",
+			"isAudioEnabled": true,
+			"isVideoEnabled": false,
+		})
+	}
+	return peers
+}
