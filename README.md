@@ -70,35 +70,86 @@ Aplikasi ini menyederhanakan siklus pendidikan daring mulai dari pengelolaan sil
 
 ---
 
-## 🚀 Quick Start
+## 📋 Prerequisites
 
-### 1. Prasyarat
-- Go 1.21 atau lebih baru
-- Node.js 18.x atau lebih baru (npm / pnpm / yarn)
-- PostgreSQL (Opsional, fallback otomatis ke SQLite lokal)
+Sebelum memulai instalasi dan menjalankan proyek secara lokal, pastikan sistem Anda telah memenuhi prasyarat berikut:
 
-### 2. Setup Backend
+- **Git**: Versi 2.30 atau lebih baru ([Unduh Git](https://git-scm.com/))
+- **Node.js**: Versi LTS 18.x atau 20.x atau lebih baru ([Unduh Node.js](https://nodejs.org/))
+- **npm**: Versi 9.x atau lebih baru (otomatis terpasang bersama Node.js) atau alternatif package manager seperti `pnpm` / `yarn`
+- **Go**: Versi 1.21 atau lebih baru ([Unduh Go](https://go.dev/dl/))
+- **Database Engine** *(Opsional)*: PostgreSQL 14+ (jika tidak dikonfigurasi, sistem otomatis menggunakan SQLite lokal sebagai fallback tanpa dependensi eksternal)
+
+---
+
+## 💻 Getting Started & Installation
+
+Ikuti langkah-langkah berikut untuk mengkloning repositori, memasang dependensi, dan menjalankan lingkungan *development* lokal:
+
+### 1. Kloning Repositori
+
 ```bash
+# Clone repositori dari GitHub
+git clone https://github.com/kraadev/lms.git
+
+# Masuk ke direktori proyek
+cd lms
+```
+
+### 2. Konfigurasi & Menjalankan Backend (Go)
+
+Buka terminal pertama untuk backend:
+
+```bash
+# Masuk ke direktori backend
 cd backend
-cp .env.example .env
-go run ./cmd/seed    # Jalankan database migration & seed awal
-go run ./cmd/api     # Server aktif di http://localhost:8080
-```
 
-### 3. Setup Frontend
+# Salin berkas environment konfigurasi
+cp .env.example .env
+
+# Unduh seluruh dependensi Go modules
+go mod download
+
+# (Opsional) Jalankan migrasi dan database seeder akun bawaan
+go run ./cmd/seed
+
+# Jalankan server backend dalam mode development
+go run ./cmd/api
+```
+> Backend API akan aktif di `http://localhost:8080` dan WebSocket di `ws://localhost:8080/ws`.
+
+---
+
+### 3. Konfigurasi & Menjalankan Frontend (Nuxt 3)
+
+Buka terminal kedua untuk frontend:
+
 ```bash
+# Masuk ke direktori frontend
 cd frontend
-cp .env.example .env
-npm install
-npm run dev          # Aplikasi aktif di http://localhost:3000
-```
 
-### 4. Akun Bawaan Pengujian (Seed Data)
-| Role | Email | Password |
-| :--- | :--- | :--- |
-| **Admin** | `admin@lms.local` | `admin123` |
-| **Teacher** | `teacher1@lms.local` | `password123` |
-| **Student** | `student1@lms.local` | `password123` |
+# Salin berkas environment konfigurasi
+cp .env.example .env
+
+# Pasang dependensi modul npm
+npm install
+
+# Jalankan server development Nuxt 3 (Hot Module Replacement aktif)
+npm run dev
+```
+> Antarmuka web frontend akan dapat diakses melalui peramban di `http://localhost:3000`.
+
+---
+
+### 4. Akun Pengujian Lokal (Seed Data)
+
+Setelah seeder dijalankan, Anda dapat langsung masuk (*login*) menggunakan kredensial bawaan berikut:
+
+| Peran (Role) | Email | Password | Hak Akses |
+| :--- | :--- | :--- | :--- |
+| **Admin** | `admin@lms.local` | `admin123` | Manajemen pengguna, kelas, dan konfigurasi sistem |
+| **Teacher** | `teacher1@lms.local` | `password123` | Manajemen materi ajar, pembuatan kuis, dan penilaian tugas |
+| **Student** | `student1@lms.local` | `password123` | Akses materi, pengerjaan kuis, dan pengumpulan tugas |
 
 ---
 
