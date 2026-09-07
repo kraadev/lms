@@ -167,3 +167,13 @@ Kontribusi selalu terbuka dan sangat kami hargai! Untuk berkontribusi:
 ## 📄 License
 
 Didistribusikan di bawah Lisensi MIT. Lihat file `LICENSE` untuk informasi lebih lanjut.
+
+---
+
+## 📚 Documentation
+
+Untuk panduan teknis yang lebih terperinci, silakan merujuk ke dokumentasi kami:
+- [Architecture Overview](docs/overview.md)
+- [Local Development & Setup Guide](docs/local-setup.md)
+- [Contributing Guidelines](CONTRIBUTING.md)
+- [Code of Conduct](CODE_OF_CONDUCT.md)
