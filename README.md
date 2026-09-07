@@ -6,7 +6,7 @@ Modern, scalable, and secure full-stack Learning Management System designed for 
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Go Version](https://img.shields.io/badge/Go-1.21+-00ADD8?logo=go&logoColor=white)](https://go.dev/)
-[![Nuxt 3](https://img.shields.io/badge/Nuxt-3-00DC82?logo=nuxt.js&logoColor=white)](https://nuxt.com/)
+[![Nuxt 4](https://img.shields.io/badge/Nuxt-4-00DC82?logo=nuxt.js&logoColor=white)](https://nuxt.com/)
 [![Vue 3](https://img.shields.io/badge/Vue-3-4FC08D?logo=vue.js&logoColor=white)](https://vuejs.org/)
 [![Tailwind CSS](https://img.shields.io/badge/TailwindCSS-3.4-38B2AC?logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
@@ -54,7 +54,7 @@ Aplikasi ini menyederhanakan siklus pendidikan daring mulai dari pengelolaan sil
 ## 🛠️ Tech Stack
 
 ### Frontend
-- **Framework:** [Nuxt 3](https://nuxt.com/) (Vue 3 + Composition API + Nitro Engine)
+- **Framework:** [Nuxt 4](https://nuxt.com/) (Vue 3 + Composition API + Nitro Engine)
 - **Language:** [TypeScript](https://www.typescriptlang.org/)
 - **Styling:** [Tailwind CSS](https://tailwindcss.com/)
 - **State Management:** [Pinia](https://pinia.vuejs.org/)
@@ -120,7 +120,7 @@ go run ./cmd/api
 
 ---
 
-### 3. Konfigurasi & Menjalankan Frontend (Nuxt 3)
+### 3. Konfigurasi & Menjalankan Frontend (Nuxt 4)
 
 Buka terminal kedua untuk frontend:
 
@@ -134,7 +134,7 @@ cp .env.example .env
 # Pasang dependensi modul npm
 npm install
 
-# Jalankan server development Nuxt 3 (Hot Module Replacement aktif)
+# Jalankan server development Nuxt 4 (Hot Module Replacement aktif)
 npm run dev
 ```
 > Antarmuka web frontend akan dapat diakses melalui peramban di `http://localhost:3000`.
