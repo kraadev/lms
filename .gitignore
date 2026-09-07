@@ -58,3 +58,11 @@ coverage/
 *.coverprofile
 temp/
 tmp/
+
+# Temporary draft files & backup caches
+*.bak
+*.swp
+*.patch
+.draft/
+.tmp/
+pr_automation_batch2.log
