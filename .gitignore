@@ -16,7 +16,7 @@ dist/
 **/.env.*
 !**/.env.example
 
-# Logs
+# Logs & Debugging
 logs/
 *.log
 npm-debug.log*
@@ -24,8 +24,9 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
+pr_automation.log
 
-# OS / Editor
+# Operating System & IDE
 .DS_Store
 Thumbs.db
 .vscode/
@@ -36,10 +37,24 @@ Thumbs.db
 *.sln
 *.sw?
 
-# Go
+# Go Build Artifacts
 bin/
 *.exe
 *.exe~
 *.dll
 *.so
 *.dylib
+
+# SQLite & Local Databases
+*.db
+*.db-shm
+*.db-wal
+lms.db*
+backend/lms.db*
+
+# Test Coverage & Temp
+coverage/
+*.out
+*.coverprofile
+temp/
+tmp/
