@@ -47,3 +47,15 @@ Frontend menggunakan Nuxt 4 dengan struktur direktori idiomatik:
 1. **Role-Based Access Control (RBAC)**: Validasi tiga tingkat hak akses: Admin, Teacher, dan Student.
 2. **Server-Side Verification**: Seluruh aksi (pengumpulan tugas, pembukaan meeting, penilaian kuis) divalidasi mutlak di server, bukan hanya di UI klien.
 3. **JWT Dual Mode**: Token disimpan aman di HttpOnly cookie serta didukung melalui header `Authorization: Bearer <token>`.
+
+---
+
+## 🚀 Fase Pengembangan 2: Komponen Dasar & Data Stubs
+
+Pada fase ini, fondasi struktur kode aplikasi diperkuat dengan menambahkan modul `src/` awal:
+- **`src/utils/helpers.js`**: Utilitas bersama pemformatan tanggal, teks, dan mata uang.
+- **`src/data/courses.json`**: Dataset kursus mock untuk pengujian tata letak katalog dan ruang ajar.
+- **`src/components/Navbar.jsx`**: Kerangka komponen navigasi utama dan kontrol status autentikasi pengguna.
+- **`src/constants/index.js`**: Registry konstanta peran (*roles*), status pertemuan (*meetings*), dan rute navigasi.
+- **`src/routes/index.js`**: Pemetaan rute aplikasi terpusat dengan dukungan metadata hak akses.
+- **`src/styles/global.css`**: Variabel token desain global untuk konsistensi UI antarmuka.
