@@ -1,0 +1,47 @@
+[
+  {
+    "id": "crs-101",
+    "title": "Dasar-Dasar Pemrograman Web Modern",
+    "slug": "dasar-pemrograman-web-modern",
+    "category": "Software Engineering",
+    "instructor": "Budi Santoso, M.Kom.",
+    "level": "Beginner",
+    "duration": "12 Minggu",
+    "studentsCount": 42,
+    "thumbnail": "/images/courses/web-dev.jpg",
+    "description": "Pelajari fondasi pengembangan web modern menggunakan JavaScript, TypeScript, HTML5, dan Tailwind CSS.",
+    "modulesCount": 8,
+    "quizzesCount": 4,
+    "isPublished": true
+  },
+  {
+    "id": "crs-102",
+    "title": "Backend Engineering dengan Go & Microservices",
+    "slug": "backend-engineering-go-microservices",
+    "category": "Backend Development",
+    "instructor": "Siti Rahma, S.T.",
+    "level": "Intermediate",
+    "duration": "10 Minggu",
+    "studentsCount": 38,
+    "thumbnail": "/images/courses/go-backend.jpg",
+    "description": "Pengembangan backend performa tinggi dengan Golang, RESTful API, WebSocket, dan arsitektur database modular.",
+    "modulesCount": 10,
+    "quizzesCount": 5,
+    "isPublished": true
+  },
+  {
+    "id": "crs-103",
+    "title": "Interaktif Realtime Multimedia dengan WebRTC",
+    "slug": "interaktif-realtime-multimedia-webrtc",
+    "category": "Cloud & Networking",
+    "instructor": "Budi Santoso, M.Kom.",
+    "level": "Advanced",
+    "duration": "8 Minggu",
+    "studentsCount": 25,
+    "thumbnail": "/images/courses/webrtc.jpg",
+    "description": "Implementasi tatap muka video conference latensi ultra-rendah menggunakan LiveKit dan arsitektur SFU modern.",
+    "modulesCount": 6,
+    "quizzesCount": 3,
+    "isPublished": true
+  }
+]
