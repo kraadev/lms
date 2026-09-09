@@ -65,4 +65,8 @@ tmp/
 *.patch
 .draft/
 .tmp/
-pr_automation_batch2.log
+pr_automation*.log
+automate_prs*.sh
+
+# Local Planning & Internal Documentation
+docs/local/
