@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { BookOpen, ClipboardList, FileQuestion, Video, AlertCircle, Clock } from 'lucide-vue-next'
+import { BookOpen, ClipboardList, FileQuestion, Video, AlertCircle, Clock, Sparkles, ArrowRight } from 'lucide-vue-next'
 import { dashboardService } from '~/services/dashboard'
 import type { StudentDashboardData, TeacherDashboardData, AdminDashboardData } from '~/types'
 import { formatDate, formatRelativeTime } from '~/utils/formatters'
@@ -101,6 +101,43 @@ function submissionStatusLabel(status: string) {
         </NuxtLink>
       </div>
 
+      <!-- Continue Learning Hero Card (TSK-035) -->
+      <UiCard
+        v-if="studentData.current_classes?.length"
+        variant="interactive"
+        padding="lg"
+        class="mb-6 bg-gradient-to-r from-brand-900/10 via-brand-600/5 to-transparent border-brand-200/70 dark:border-brand-900/50 shadow-soft"
+      >
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div class="space-y-1.5 min-w-0">
+            <div class="flex items-center gap-2">
+              <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-brand-100 text-brand-700 dark:bg-brand-950/70 dark:text-brand-300">
+                <Sparkles class="w-3 h-3 text-brand-600 dark:text-brand-400" />
+                Lanjutkan Belajar
+              </span>
+              <span class="text-xs text-surface-500 dark:text-surface-400">Terakhir diakses</span>
+            </div>
+            <h2 class="text-lg font-bold text-surface-900 dark:text-surface-50 truncate">
+              {{ studentData.current_classes[0].title }}
+            </h2>
+            <p class="text-xs text-surface-500 dark:text-surface-400">
+              Pengajar: {{ studentData.current_classes[0].teacher?.name || 'Guru Pengampu' }} &middot; {{ studentData.current_classes[0].academic_year || 'Tahun Ajaran Aktif' }}
+            </p>
+          </div>
+
+          <div class="flex sm:flex-col sm:items-end justify-between items-center gap-3 shrink-0">
+            <div class="w-36 sm:w-44">
+              <UiProgress :value="68" :max="100" size="sm" variant="brand" show-label label-position="right" />
+            </div>
+            <NuxtLink :to="`/classes/${studentData.current_classes[0].id}`">
+              <UiButton size="sm" variant="primary">
+                Masuk Kelas <ArrowRight class="w-3.5 h-3.5 ml-1" />
+              </UiButton>
+            </NuxtLink>
+          </div>
+        </div>
+      </UiCard>
+
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <!-- Left column -->
         <div class="lg:col-span-2 space-y-6">
@@ -155,7 +192,7 @@ function submissionStatusLabel(status: string) {
                   <p class="text-xs text-surface-500 dark:text-surface-400">{{ a.class_title }}</p>
                 </div>
                 <div class="text-right shrink-0">
-                  <UiB v-if="a.my_submission" :variant="submissionStatusVariant(a.my_submission.status)" size="sm">{{ submissionStatusLabel(a.my_submission.status) }}</UiB>
+                  <UiBadge v-if="a.my_submission" :variant="submissionStatusVariant(a.my_submission.status)" size="sm">{{ submissionStatusLabel(a.my_submission.status) }}</UiBadge>
                   <p class="text-xs text-surface-500 dark:text-surface-400 mt-0.5 flex items-center gap-0.5">
                     <Clock class="w-3 h-3" />
                     {{ formatDate(a.due_date, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) }}
