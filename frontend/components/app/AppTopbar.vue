@@ -1,32 +1,16 @@
 <script setup lang="ts">
-import { Bell, Sun, Moon, Monitor, ChevronDown, LogOut, User, Settings } from 'lucide-vue-next'
+import { Bell, ChevronDown, LogOut, User, Settings } from 'lucide-vue-next'
 import { useAuthStore } from '~/stores/auth'
 import { useNotificationsStore } from '~/stores/notifications'
-import type { ThemeMode } from '~/composables/useTheme'
 
 const auth = useAuthStore()
 const notifStore = useNotificationsStore()
-const { themeMode, applyTheme } = useTheme()
 
 const showUserMenu = ref(false)
-const showThemeMenu = ref(false)
 const showNotifPanel = ref(false)
-
-const themes: { key: ThemeMode; label: string; icon: any }[] = [
-  { key: 'light', label: 'Terang', icon: Sun },
-  { key: 'dark', label: 'Gelap', icon: Moon },
-  { key: 'system', label: 'Sistem', icon: Monitor }
-]
-
-const currentThemeIcon = computed(() => {
-  if (themeMode.value === 'dark') return Moon
-  if (themeMode.value === 'light') return Sun
-  return Monitor
-})
 
 function closeAll() {
   showUserMenu.value = false
-  showThemeMenu.value = false
   showNotifPanel.value = false
 }
 
@@ -57,30 +41,7 @@ function useClickOutside(el: Ref<HTMLElement | null>, cb: () => void) {
 
     <div class="flex items-center gap-1.5">
       <!-- Theme toggle -->
-      <div class="relative">
-        <button
-          type="button"
-          class="p-2 rounded-lg text-surface-500 dark:text-surface-400 hover:bg-surface-100 dark:hover:bg-surface-800 hover:text-surface-800 dark:hover:text-surface-100 transition-colors"
-          :aria-label="`Tema saat ini: ${themeMode}`"
-          @click="showThemeMenu = !showThemeMenu; showUserMenu = false; showNotifPanel = false"
-        >
-          <component :is="currentThemeIcon" class="w-4.5 h-4.5" />
-        </button>
-        <Transition enter-active-class="transition duration-100 ease-out" enter-from-class="opacity-0 scale-95" enter-to-class="opacity-100 scale-100" leave-active-class="transition duration-75 ease-in" leave-from-class="opacity-100 scale-100" leave-to-class="opacity-0 scale-95">
-          <div v-if="showThemeMenu" class="absolute right-0 mt-1 top-full w-36 bg-white dark:bg-surface-900 rounded-xl shadow-elevated border border-surface-200 dark:border-surface-800 py-1 z-30">
-            <button
-              v-for="theme in themes"
-              :key="theme.key"
-              type="button"
-              :class="['w-full flex items-center gap-2.5 px-3 py-2 text-sm transition-colors', themeMode === theme.key ? 'text-brand-600 dark:text-brand-400 bg-brand-50 dark:bg-brand-950/50' : 'text-surface-700 dark:text-surface-300 hover:bg-surface-50 dark:hover:bg-surface-800']"
-              @click="applyTheme(theme.key); showThemeMenu = false"
-            >
-              <component :is="theme.icon" class="w-4 h-4 shrink-0" />
-              {{ theme.label }}
-            </button>
-          </div>
-        </Transition>
-      </div>
+      <UiThemeToggle variant="dropdown" />
 
       <!-- Notifications -->
       <div class="relative">
