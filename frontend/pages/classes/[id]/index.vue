@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import {
   BookOpen, ClipboardList, FileQuestion, Users,
-  MessageSquare, Video, BookMarked, AlertCircle
+  MessageSquare, Video, BookMarked, AlertCircle, Copy, Check
 } from 'lucide-vue-next'
 import { classesService } from '~/services/classes'
 import type { Class } from '~/types'
@@ -33,6 +33,21 @@ const tabs = computed(() => [
   { key: 'chat', label: 'Chat', icon: MessageSquare },
   { key: 'meeting', label: 'Meeting', icon: Video }
 ])
+
+const isCopied = ref(false)
+const toast = useToast()
+
+function copyClassCode() {
+  if (!cls.value?.code) return
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(cls.value.code)
+  }
+  isCopied.value = true
+  toast.success('Kode kelas berhasil disalin ke clipboard')
+  setTimeout(() => {
+    isCopied.value = false
+  }, 2000)
+}
 
 useSeoMeta({ title: computed(() => cls.value?.title || 'Kelas') })
 
@@ -79,6 +94,16 @@ watch(classId, load)
               <div class="flex items-center gap-2 flex-wrap">
                 <h1 class="text-lg font-bold text-surface-900 dark:text-surface-100">{{ cls.title }}</h1>
                 <UiBadge :variant="cls.status === 'active' ? 'success' : 'default'" size="sm">{{ cls.status === 'active' ? 'Aktif' : 'Arsip' }}</UiBadge>
+                <button
+                  v-if="cls.code"
+                  type="button"
+                  class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-mono font-semibold bg-surface-100 dark:bg-surface-800 text-surface-700 dark:text-surface-300 hover:bg-surface-200 dark:hover:bg-surface-700 transition-colors focus-ring cursor-pointer"
+                  title="Klik untuk menyalin kode kelas"
+                  @click="copyClassCode"
+                >
+                  <span>Kode: {{ cls.code }}</span>
+                  <component :is="isCopied ? Check : Copy" class="w-3 h-3 text-brand-600 dark:text-brand-400" />
+                </button>
               </div>
               <div class="flex flex-wrap items-center gap-3 mt-1 text-xs text-surface-500 dark:text-surface-400">
                 <span>{{ cls.academic_year }}</span>
