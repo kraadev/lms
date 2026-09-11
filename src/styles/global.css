@@ -12,6 +12,16 @@
   --color-border: #e2e8f0;
   --color-text-main: #0f172a;
   --color-text-muted: #64748b;
+
+  /* Semantic Status Tokens (Light - WCAG AA compliant) */
+  --color-status-success: #059669;
+  --color-status-success-bg: #ecfdf5;
+  --color-status-warning: #d97706;
+  --color-status-warning-bg: #fffbeb;
+  --color-status-danger: #e11d48;
+  --color-status-danger-bg: #fff1f2;
+  --color-status-info: #0284c7;
+  --color-status-info-bg: #f0f9ff;
 }
 
 .dark {
@@ -20,6 +30,16 @@
   --color-border: #1e293b;
   --color-text-main: #f8fafc;
   --color-text-muted: #94a3b8;
+
+  /* Semantic Status Tokens (Dark - WCAG AA compliant) */
+  --color-status-success: #34d399;
+  --color-status-success-bg: #064e3b;
+  --color-status-warning: #fbbf24;
+  --color-status-warning-bg: #78350f;
+  --color-status-danger: #fb7185;
+  --color-status-danger-bg: #881337;
+  --color-status-info: #38bdf8;
+  --color-status-info-bg: #0c4a6e;
 }
 
 /* Custom Scrollbar Utility */

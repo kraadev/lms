@@ -59,3 +59,17 @@ Pada fase ini, fondasi struktur kode aplikasi diperkuat dengan menambahkan modul
 - **`src/constants/index.js`**: Registry konstanta peran (*roles*), status pertemuan (*meetings*), dan rute navigasi.
 - **`src/routes/index.js`**: Pemetaan rute aplikasi terpusat dengan dukungan metadata hak akses.
 - **`src/styles/global.css`**: Variabel token desain global untuk konsistensi UI antarmuka.
+
+---
+
+## 🎨 Fase Pengembangan 3: Design System & Semantic Tokens
+
+Pada fase ini, sistem desain antarmuka diperkuat dengan komponen primitif modular dan token semantik:
+- **Primitive UI Components**:
+  - `UiCard.vue`: Kontainer kartu dengan varian `default`, `flat`, `outline`, dan `interactive` beserta header/footer slots.
+  - `UiProgress.vue`: Indikator progres dengan varian semantik (`brand`, `success`, `warning`, `danger`), label terintegrasi, dan animasi pulsa.
+  - `UiSelect.vue`: Input seleksi formulir aksesibel dengan opsi dinamis, status validasi error, dan adaptasi tema.
+  - `UiDropdown.vue`: Menu popover mengambang dengan transisi animasi halus, deteksi *click-outside*, dan navigasi keyboard Esc.
+- **Semantic Design Tokens**:
+  - Palet warna semantik `brand`, `surface`, dan `status` (`success`, `warning`, `danger`, `info`) pada `tailwind.preset.js` dan konfigurasi Nuxt.
+  - Variabel CSS adaptif di `frontend/assets/css/main.css` dan `src/styles/global.css` yang memenuhi standar kontras WCAG AA untuk light dan dark mode.
