@@ -21,6 +21,24 @@ func RunMigrations(db *DB) error {
 	}
 
 	queries := []string{
+		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS organizations (
+			id %s,
+			name VARCHAR(255) NOT NULL,
+			slug VARCHAR(255) NOT NULL UNIQUE,
+			logo_url TEXT,
+			created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+		);`, primaryKeyType),
+
+		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS system_settings (
+			id %s,
+			setting_key VARCHAR(100) NOT NULL UNIQUE,
+			setting_value TEXT NOT NULL,
+			category VARCHAR(50) NOT NULL DEFAULT 'general',
+			is_public %s %s,
+			updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+		);`, primaryKeyType, boolType, boolDefaultFalse),
+
 		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS users (
 			id %s,
 			name VARCHAR(255) NOT NULL,
