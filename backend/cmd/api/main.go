@@ -114,6 +114,7 @@ func main() {
 	r.Use(chimiddleware.Logger)
 	r.Use(chimiddleware.Recoverer)
 	r.Use(chimiddleware.Timeout(60 * time.Second))
+	r.Use(middleware.SecurityHeaders)
 
 	// Global CORS Setup - allow all local network, IP, and tunnel origins
 	r.Use(cors.Handler(cors.Options{
