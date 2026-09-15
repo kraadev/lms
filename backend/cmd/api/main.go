@@ -21,6 +21,7 @@ import (
 	"lms/internal/classes"
 	"lms/internal/config"
 	"lms/internal/dashboard"
+	"lms/internal/health"
 	"lms/internal/database"
 	"lms/internal/materials"
 	"lms/internal/meetings"
@@ -102,6 +103,7 @@ func main() {
 	notifHandler := notifications.NewHandler(notifService)
 
 	dashboardHandler := dashboard.NewHandler(db)
+	healthHandler := health.NewHandler(db)
 
 	// 10. HTTP Router Setup
 	r := chi.NewRouter()
@@ -134,6 +136,9 @@ func main() {
 			"driver":  db.Driver,
 		})
 	})
+
+	r.Get("/healthz", healthHandler.Healthz)
+	r.Get("/readyz", healthHandler.Readyz)
 
 	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
 		utils.JSON(w, http.StatusOK, map[string]string{
