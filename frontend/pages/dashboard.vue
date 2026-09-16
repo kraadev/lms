@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { BookOpen, ClipboardList, FileQuestion, Video, AlertCircle, Clock, Sparkles, ArrowRight } from 'lucide-vue-next'
+import { BookOpen, ClipboardList, FileQuestion, Video, AlertCircle, Clock, Sparkles, ArrowRight, Users, GraduationCap } from 'lucide-vue-next'
 import { dashboardService } from '~/services/dashboard'
 import type { StudentDashboardData, TeacherDashboardData, AdminDashboardData } from '~/types'
 import { formatDate, formatRelativeTime } from '~/utils/formatters'
@@ -352,50 +352,93 @@ function submissionStatusLabel(status: string) {
       </div>
 
       <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
-        <div class="p-5 bg-white dark:bg-surface-900 rounded-xl border border-surface-200 dark:border-surface-800">
-          <p class="text-3xl font-bold text-surface-900 dark:text-surface-100">{{ adminData.total_students }}</p>
-          <p class="text-xs text-surface-500 dark:text-surface-400 mt-1">Total Siswa</p>
-        </div>
-        <div class="p-5 bg-white dark:bg-surface-900 rounded-xl border border-surface-200 dark:border-surface-800">
-          <p class="text-3xl font-bold text-brand-600 dark:text-brand-400">{{ adminData.total_teachers }}</p>
-          <p class="text-xs text-surface-500 dark:text-surface-400 mt-1">Total Guru</p>
-        </div>
-        <div class="p-5 bg-white dark:bg-surface-900 rounded-xl border border-surface-200 dark:border-surface-800">
-          <p class="text-3xl font-bold text-violet-600 dark:text-violet-400">{{ adminData.total_classes }}</p>
-          <p class="text-xs text-surface-500 dark:text-surface-400 mt-1">Total Kelas</p>
-        </div>
-        <div class="p-5 bg-white dark:bg-surface-900 rounded-xl border border-surface-200 dark:border-surface-800">
-          <p class="text-3xl font-bold text-emerald-600 dark:text-emerald-400">{{ adminData.active_classes }}</p>
-          <p class="text-xs text-surface-500 dark:text-surface-400 mt-1">Kelas Aktif</p>
-        </div>
+        <UiCard variant="default" padding="md" class="border border-surface-200 dark:border-surface-800">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-xs font-semibold uppercase tracking-wider text-surface-400 dark:text-surface-500">Total Siswa</p>
+              <p class="text-2xl sm:text-3xl font-bold text-surface-900 dark:text-surface-50 mt-1">{{ adminData.total_students }}</p>
+            </div>
+            <div class="w-10 h-10 rounded-xl bg-brand-50 dark:bg-brand-950/50 flex items-center justify-center text-brand-600 dark:text-brand-400">
+              <Users class="w-5 h-5" />
+            </div>
+          </div>
+        </UiCard>
+
+        <UiCard variant="default" padding="md" class="border border-surface-200 dark:border-surface-800">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-xs font-semibold uppercase tracking-wider text-surface-400 dark:text-surface-500">Total Guru</p>
+              <p class="text-2xl sm:text-3xl font-bold text-amber-600 dark:text-amber-400 mt-1">{{ adminData.total_teachers }}</p>
+            </div>
+            <div class="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950/50 flex items-center justify-center text-amber-600 dark:text-amber-400">
+              <GraduationCap class="w-5 h-5" />
+            </div>
+          </div>
+        </UiCard>
+
+        <UiCard variant="default" padding="md" class="border border-surface-200 dark:border-surface-800">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-xs font-semibold uppercase tracking-wider text-surface-400 dark:text-surface-500">Total Kelas</p>
+              <p class="text-2xl sm:text-3xl font-bold text-violet-600 dark:text-violet-400 mt-1">{{ adminData.total_classes }}</p>
+            </div>
+            <div class="w-10 h-10 rounded-xl bg-violet-50 dark:bg-violet-950/50 flex items-center justify-center text-violet-600 dark:text-violet-400">
+              <BookOpen class="w-5 h-5" />
+            </div>
+          </div>
+        </UiCard>
+
+        <UiCard variant="default" padding="md" class="border border-surface-200 dark:border-surface-800">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-xs font-semibold uppercase tracking-wider text-surface-400 dark:text-surface-500">Kelas Aktif</p>
+              <p class="text-2xl sm:text-3xl font-bold text-emerald-600 dark:text-emerald-400 mt-1">{{ adminData.active_classes }}</p>
+            </div>
+            <div class="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+              <Sparkles class="w-5 h-5" />
+            </div>
+          </div>
+        </UiCard>
       </div>
 
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <section>
-          <h2 class="text-sm font-semibold text-surface-700 dark:text-surface-300 mb-3">Pengguna Terbaru</h2>
-          <div class="divide-y divide-surface-100 dark:divide-surface-800 rounded-xl border border-surface-200 dark:border-surface-800 bg-white dark:bg-surface-900 overflow-hidden">
+          <div class="flex items-center justify-between mb-3">
+            <h2 class="text-sm font-semibold text-surface-700 dark:text-surface-300">Pengguna Terbaru</h2>
+            <NuxtLink to="/admin/users" class="text-xs font-medium text-brand-600 dark:text-brand-400 hover:underline">Kelola pengguna</NuxtLink>
+          </div>
+          <div class="divide-y divide-surface-100 dark:divide-surface-800 rounded-xl border border-surface-200 dark:border-surface-800 bg-white dark:bg-surface-900 overflow-hidden shadow-soft">
             <div v-if="!adminData.recent_users?.length" class="p-6 text-center text-sm text-surface-400">Belum ada pengguna baru</div>
-            <div v-for="u in adminData.recent_users" :key="u.id" class="flex items-center gap-3 p-3.5">
+            <div v-for="u in adminData.recent_users" :key="u.id" class="flex items-center gap-3 p-3.5 hover:bg-surface-50/70 dark:hover:bg-surface-800/40 transition-colors">
               <UiAvatar :name="u.name" size="sm" />
               <div class="flex-1 min-w-0">
                 <p class="text-sm font-medium text-surface-800 dark:text-surface-200 truncate">{{ u.name }}</p>
                 <p class="text-xs text-surface-500 dark:text-surface-400 truncate">{{ u.email }}</p>
               </div>
-              <UiB :variant="u.role === 'admin' ? 'danger' : u.role === 'teacher' ? 'primary' : 'default'" size="sm">{{ u.role }}</UiB>
+              <UiB :variant="u.role === 'admin' ? 'danger' : u.role === 'teacher' ? 'primary' : 'default'" size="sm">
+                {{ u.role === 'admin' ? 'Admin' : u.role === 'teacher' ? 'Guru' : 'Siswa' }}
+              </UiB>
             </div>
           </div>
         </section>
+
         <section>
-          <h2 class="text-sm font-semibold text-surface-700 dark:text-surface-300 mb-3">Aktivitas Sistem</h2>
-          <div class="space-y-2">
-            <div v-if="!adminData.system_activity?.length" class="text-sm text-surface-400 py-4">Belum ada aktivitas</div>
-            <div v-for="act in adminData.system_activity" :key="act.id" class="flex items-start gap-3 p-3 rounded-xl border border-surface-200 dark:border-surface-800 bg-white dark:bg-surface-900">
-              <div class="w-7 h-7 rounded-full bg-surface-100 dark:bg-surface-800 flex items-center justify-center shrink-0 mt-0.5">
-                <div class="w-2 h-2 rounded-full bg-brand-500" />
-              </div>
-              <div>
-                <p class="text-sm text-surface-800 dark:text-surface-200">{{ act.description }}</p>
-                <p class="text-xs text-surface-400 mt-0.5">{{ formatRelativeTime(act.timestamp) }}</p>
+          <div class="flex items-center justify-between mb-3">
+            <h2 class="text-sm font-semibold text-surface-700 dark:text-surface-300">Aktivitas Sistem</h2>
+          </div>
+          <div class="rounded-xl border border-surface-200 dark:border-surface-800 bg-white dark:bg-surface-900 overflow-hidden shadow-soft">
+            <div v-if="!adminData.system_activity?.length" class="p-6">
+              <UiEmptyState variant="default" size="sm" title="Belum Ada Aktivitas" description="Log dan aktivitas sistem akan tercatat di sini secara otomatis." />
+            </div>
+            <div v-else class="divide-y divide-surface-100 dark:divide-surface-800">
+              <div v-for="act in adminData.system_activity" :key="act.id" class="flex items-start gap-3 p-3.5 hover:bg-surface-50/70 dark:hover:bg-surface-800/40 transition-colors">
+                <div class="w-7 h-7 rounded-full bg-brand-50 dark:bg-brand-950/60 text-brand-600 dark:text-brand-400 flex items-center justify-center shrink-0 mt-0.5">
+                  <div class="w-2 h-2 rounded-full bg-brand-500" />
+                </div>
+                <div class="min-w-0 flex-1">
+                  <p class="text-sm text-surface-800 dark:text-surface-200">{{ act.description }}</p>
+                  <p class="text-xs text-surface-400 mt-0.5">{{ formatRelativeTime(act.timestamp) }}</p>
+                </div>
               </div>
             </div>
           </div>

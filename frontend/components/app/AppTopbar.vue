@@ -5,9 +5,25 @@ import { useNotificationsStore } from '~/stores/notifications'
 
 const auth = useAuthStore()
 const notifStore = useNotificationsStore()
+const route = useRoute()
 
 const showUserMenu = ref(false)
 const showNotifPanel = ref(false)
+
+const currentRouteTitle = computed(() => {
+  const path = route.path
+  if (path === '/dashboard') return auth.isAdmin ? 'Admin Dashboard' : auth.isTeacher ? 'Teacher Dashboard' : 'Dashboard'
+  if (path.startsWith('/classes')) return 'Kelas'
+  if (path.startsWith('/assignments')) return 'Tugas'
+  if (path.startsWith('/quizzes')) return 'Kuis'
+  if (path.startsWith('/meetings')) return 'Meeting'
+  if (path.startsWith('/messages')) return 'Pesan'
+  if (path.startsWith('/notifications')) return 'Notifikasi'
+  if (path.startsWith('/admin/users')) return 'Manajemen Pengguna'
+  if (path.startsWith('/admin/classes')) return 'Manajemen Kelas'
+  if (path.startsWith('/students')) return 'Daftar Siswa'
+  return 'LMS Portal'
+})
 
 function closeAll() {
   showUserMenu.value = false
@@ -36,7 +52,11 @@ function useClickOutside(el: Ref<HTMLElement | null>, cb: () => void) {
 
     <!-- Page title -->
     <div class="flex-1 min-w-0">
-      <slot />
+      <slot>
+        <span class="text-sm font-semibold text-surface-800 dark:text-surface-200">
+          {{ currentRouteTitle }}
+        </span>
+      </slot>
     </div>
 
     <div class="flex items-center gap-1.5">
@@ -49,7 +69,7 @@ function useClickOutside(el: Ref<HTMLElement | null>, cb: () => void) {
           type="button"
           class="relative p-2 rounded-lg text-surface-500 dark:text-surface-400 hover:bg-surface-100 dark:hover:bg-surface-800 hover:text-surface-800 dark:hover:text-surface-100 transition-colors"
           aria-label="Notifikasi"
-          @click="showNotifPanel = !showNotifPanel; showUserMenu = false; showThemeMenu = false; if (showNotifPanel) notifStore.fetchNotifications()"
+          @click="showNotifPanel = !showNotifPanel; showUserMenu = false; if (showNotifPanel) notifStore.fetchNotifications()"
         >
           <Bell class="w-4.5 h-4.5" />
           <span
@@ -75,7 +95,7 @@ function useClickOutside(el: Ref<HTMLElement | null>, cb: () => void) {
               >
                 <span :class="['w-2 h-2 rounded-full shrink-0 mt-1.5', notif.is_read ? 'bg-transparent' : 'bg-brand-500']" />
                 <div class="flex-1 min-w-0">
-                  <p class="text-sm font-medium text-surface-800 dark:text-surface-200 truncate">{{ notif.title }}</p>
+                  <p class="text-xs font-semibold text-surface-900 dark:text-surface-100 truncate">{{ notif.title }}</p>
                   <p class="text-xs text-surface-500 dark:text-surface-400 mt-0.5 line-clamp-2">{{ notif.message }}</p>
                 </div>
               </NuxtLink>
@@ -92,10 +112,10 @@ function useClickOutside(el: Ref<HTMLElement | null>, cb: () => void) {
         <button
           type="button"
           class="flex items-center gap-2 pl-2 pr-2 py-1.5 rounded-lg text-sm font-medium hover:bg-surface-100 dark:hover:bg-surface-800 transition-colors"
-          @click="showUserMenu = !showUserMenu; showThemeMenu = false; showNotifPanel = false"
+          @click="showUserMenu = !showUserMenu; showNotifPanel = false"
         >
           <UiAvatar :name="auth.user?.name" size="sm" />
-          <span class="hidden sm:block text-surface-700 dark:text-surface-300 max-w-[120px] truncate">{{ auth.user?.name }}</span>
+          <span class="hidden sm:block text-surface-700 dark:text-surface-300 max-w-[180px] truncate">{{ auth.user?.name }}</span>
           <ChevronDown class="w-4 h-4 text-surface-400 shrink-0" />
         </button>
 
