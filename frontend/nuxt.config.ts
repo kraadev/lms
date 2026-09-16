@@ -47,6 +47,10 @@ export default defineNuxtConfig({
     host: '0.0.0.0'
   },
 
+  experimental: {
+    appManifest: false
+  },
+
   nitro: {
     routeRules: {
       '/api/**': { proxy: 'http://127.0.0.1:8080/api/**' }
