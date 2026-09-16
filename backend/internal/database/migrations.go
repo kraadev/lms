@@ -191,6 +191,35 @@ func RunMigrations(db *DB) error {
 			created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 		);`, primaryKeyType, boolType, boolDefaultFalse),
 
+				fmt.Sprintf(`CREATE TABLE IF NOT EXISTS courses (
+			id %s,
+			class_id BIGINT NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
+			title VARCHAR(255) NOT NULL,
+			description TEXT NOT NULL DEFAULT '',
+			created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+		);`, primaryKeyType),
+
+		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS modules (
+			id %s,
+			course_id BIGINT NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+			title VARCHAR(255) NOT NULL,
+			"order" INTEGER NOT NULL DEFAULT 0,
+			created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+		);`, primaryKeyType),
+
+		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS lessons (
+			id %s,
+			module_id BIGINT NOT NULL REFERENCES modules(id) ON DELETE CASCADE,
+			title VARCHAR(255) NOT NULL,
+			content_type VARCHAR(50) NOT NULL DEFAULT 'markdown',
+			content_url TEXT NOT NULL DEFAULT '',
+			content TEXT NOT NULL DEFAULT '',
+			"order" INTEGER NOT NULL DEFAULT 0,
+			duration_sec INTEGER NOT NULL DEFAULT 0,
+			created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+		);`, primaryKeyType),
+
 		// Indexes
 		`CREATE INDEX IF NOT EXISTS idx_class_members_lookup ON class_members(class_id, user_id);`,
 		`CREATE INDEX IF NOT EXISTS idx_messages_class_created ON messages(class_id, created_at);`,
