@@ -39,7 +39,10 @@ const colorClasses: Record<string, string> = {
 
 function getInitials(name?: string): string {
   if (!name) return '?'
-  const parts = name.trim().split(/\s+/)
+  // Remove content in parentheses e.g. "(Teacher)" and strip non-letter symbols
+  const cleaned = name.replace(/\(.*?\)/g, '').replace(/[^\p{L}\s]/gu, '').trim()
+  const parts = (cleaned || name).trim().split(/\s+/).filter(Boolean)
+  if (!parts.length) return '?'
   if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase()
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
 }

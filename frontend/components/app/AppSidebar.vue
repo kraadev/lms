@@ -138,12 +138,18 @@ function isActive(item: NavItem): boolean {
         :key="item.href"
         :to="item.href"
         :class="[
-          'flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all group relative',
+          'flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all group relative focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/50',
           isActive(item)
-            ? 'bg-brand-50 dark:bg-brand-950/60 text-brand-600 dark:text-brand-300 shadow-soft'
+            ? 'bg-brand-50 dark:bg-brand-950/60 text-brand-600 dark:text-brand-300'
             : 'text-surface-600 dark:text-surface-400 hover:bg-surface-100/80 dark:hover:bg-surface-800/60 hover:text-surface-900 dark:hover:text-surface-100'
         ]"
       >
+        <!-- Active indicator bar -->
+        <span
+          v-if="isActive(item)"
+          class="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 bg-brand-600 dark:bg-brand-400 rounded-r-full"
+        />
+
         <div class="flex items-center gap-2.5 min-w-0">
           <component
             :is="item.icon"
