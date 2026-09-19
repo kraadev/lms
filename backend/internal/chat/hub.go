@@ -111,3 +111,31 @@ func (h *Hub) GetRoomPeers(roomKey string) []map[string]interface{} {
 	}
 	return peers
 }
+
+func (h *Hub) ClientCount(roomKey string) int {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	if room, ok := h.rooms[roomKey]; ok {
+		return len(room)
+	}
+	return 0
+}
+
+func (h *Hub) CleanupDeadConnections() int {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
+	cleaned := 0
+	for roomKey, clients := range h.rooms {
+		for client := range clients {
+			if client.send == nil {
+				delete(clients, client)
+				cleaned++
+			}
+		}
+		if len(clients) == 0 {
+			delete(h.rooms, roomKey)
+		}
+	}
+	return cleaned
+}
