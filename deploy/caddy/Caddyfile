@@ -1,0 +1,24 @@
+# Production Caddyfile with Automatic Let's Encrypt SSL
+{
+    email admin@example.com
+}
+
+lms.example.com {
+    # Nuxt 4 SSR Frontend
+    reverse_proxy localhost:3000
+
+    # Go Chi REST API & WebSockets
+    handle /api/* {
+        reverse_proxy localhost:8080
+    }
+    handle /ws {
+        reverse_proxy localhost:8080
+    }
+
+    encode gzip zstd
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+    }
+}
