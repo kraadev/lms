@@ -16,6 +16,11 @@ import ClassMeetingTab from '~/components/classes/ClassMeetingTab.vue'
 
 definePageMeta({ middleware: 'auth' })
 
+const auth = useAuthStore()
+if (auth.isAdmin) {
+  navigateTo('/admin/classes')
+}
+
 const route = useRoute()
 const classId = computed(() => route.params.id as string)
 

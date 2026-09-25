@@ -8,6 +8,10 @@ useSeoMeta({ title: 'Kelas Saya' })
 
 const auth = useAuthStore()
 
+if (auth.isAdmin) {
+  navigateTo('/admin/classes')
+}
+
 const classes = ref<Class[]>([])
 const isLoading = ref(true)
 const error = ref<string | null>(null)

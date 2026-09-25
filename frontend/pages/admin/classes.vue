@@ -17,6 +17,11 @@ const isSaving = ref(false)
 const showModal = ref(false)
 const editingClass = ref<Class | null>(null)
 
+const showMembersModal = ref(false)
+const selectedClassForMembers = ref<Class | null>(null)
+const classMembers = ref<any[]>([])
+const loadingMembers = ref(false)
+
 const form = reactive({
   title: '',
   code: '',
@@ -24,6 +29,39 @@ const form = reactive({
   academic_year: '2024/2025',
   description: ''
 })
+
+async function openMembersModal(cls: Class) {
+  selectedClassForMembers.value = cls
+  showMembersModal.value = true
+  loadingMembers.value = true
+  try {
+    const res = await classesService.getMembers(cls.id)
+    classMembers.value = Array.isArray(res) ? res : []
+  } catch (err: any) {
+    classMembers.value = []
+    toast.error('Gagal memuat anggota', err?.message)
+  } finally {
+    loadingMembers.value = false
+  }
+}
+
+async function toggleStatus(cls: Class) {
+  const newStatus = cls.status === 'active' ? 'archived' : 'active'
+  const label = newStatus === 'active' ? 'diaktifkan' : 'diarsipkan'
+  try {
+    await adminService.updateClass(cls.id, { status: newStatus })
+    cls.status = newStatus
+    toast.success('Status Berubah', `Kelas berhasil ${label}.`)
+  } catch (err: any) {
+    toast.error('Gagal mengubah status', err?.message)
+  }
+}
+
+function copyCode(code?: string) {
+  if (!code) return
+  if (navigator.clipboard) navigator.clipboard.writeText(code)
+  toast.success('Tersalin', `Kode kelas ${code} disalin ke clipboard.`)
+}
 
 async function loadData() {
   isLoading.value = true
@@ -171,42 +209,77 @@ async function handleDelete(cls: Class) {
         class="bg-white dark:bg-surface-900 rounded-2xl border border-surface-200 dark:border-surface-800 p-5 shadow-soft flex flex-col justify-between hover:border-brand-500/50 transition-all"
       >
         <div>
+          <!-- Header card with status toggle -->
           <div class="flex items-start justify-between gap-3 mb-3">
-            <div class="w-10 h-10 rounded-xl bg-brand-100 dark:bg-brand-950/50 flex items-center justify-center shrink-0">
+            <div class="w-10 h-10 rounded-xl bg-brand-50 dark:bg-brand-950/50 flex items-center justify-center shrink-0">
               <BookOpen class="w-5 h-5 text-brand-600 dark:text-brand-400" />
             </div>
-            <UiBadge :variant="c.status === 'active' ? 'success' : 'default'" size="sm">
+            <button
+              type="button"
+              :class="[
+                'px-2.5 py-0.5 rounded-full text-xs font-semibold transition-colors cursor-pointer',
+                c.status === 'active'
+                  ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300'
+                  : 'bg-surface-100 text-surface-600 hover:bg-surface-200 dark:bg-surface-800 dark:text-surface-400'
+              ]"
+              :title="c.status === 'active' ? 'Klik untuk mengarsipkan kelas' : 'Klik untuk mengaktifkan kembali'"
+              @click="toggleStatus(c)"
+            >
               {{ c.status === 'active' ? 'Aktif' : 'Arsip' }}
-            </UiBadge>
+            </button>
           </div>
 
-          <h3 class="text-base font-bold text-surface-900 dark:text-surface-100 mb-1">
+          <h3 class="text-base font-bold text-surface-900 dark:text-surface-100 mb-1 truncate">
             {{ c.title || c.name }}
           </h3>
           <p class="text-xs text-surface-500 dark:text-surface-400 line-clamp-2 mb-3">
             {{ c.description || 'Tidak ada deskripsi' }}
           </p>
-          <p class="text-xs text-surface-600 dark:text-surface-300 font-medium">
-            Tahun Ajaran: {{ c.academic_year }}
-          </p>
+
+          <!-- Class CRUD metadata -->
+          <div class="space-y-2 text-xs text-surface-600 dark:text-surface-300 pt-3 border-t border-surface-100 dark:border-surface-800/80">
+            <div class="flex items-center justify-between">
+              <span class="text-surface-400">Guru Pengajar:</span>
+              <span class="font-semibold text-surface-800 dark:text-surface-200 truncate max-w-[150px]">
+                {{ c.teacher?.name || 'Belum Ditugaskan' }}
+              </span>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-surface-400">Tahun Ajaran:</span>
+              <span class="font-medium">{{ c.academic_year || '2024/2025' }}</span>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-surface-400">Kode Masuk:</span>
+              <button
+                type="button"
+                class="inline-flex items-center gap-1 font-mono font-bold text-[11px] text-brand-600 dark:text-brand-400 hover:underline cursor-pointer"
+                title="Klik untuk menyalin kode"
+                @click="copyCode(c.code)"
+              >
+                {{ c.code || '-' }}
+              </button>
+            </div>
+          </div>
         </div>
 
+        <!-- Action CRUD Buttons (Admin only) -->
         <div class="pt-4 border-t border-surface-100 dark:border-surface-800 flex items-center justify-between mt-4">
-          <NuxtLink :to="`/classes/${c.id}`" class="text-xs font-semibold text-brand-600 dark:text-brand-400 hover:underline">
-            Lihat Kelas &rarr;
-          </NuxtLink>
+          <UiButton variant="outline" size="sm" class="gap-1.5 text-xs" @click="openMembersModal(c)">
+            <Users class="w-3.5 h-3.5" />
+            Anggota ({{ c.member_count || 0 }})
+          </UiButton>
 
           <div class="flex items-center gap-1">
             <button
               @click="openEditModal(c)"
-              class="p-1.5 rounded-lg text-surface-500 hover:text-brand-600 hover:bg-surface-100 dark:hover:bg-surface-800 transition-colors"
-              title="Edit Kelas"
+              class="p-2 rounded-lg text-surface-500 hover:text-brand-600 hover:bg-surface-100 dark:hover:bg-surface-800 transition-colors"
+              title="Edit Data Kelas"
             >
               <Edit2 class="w-4 h-4" />
             </button>
             <button
               @click="handleDelete(c)"
-              class="p-1.5 rounded-lg text-surface-500 hover:text-red-600 hover:bg-surface-100 dark:hover:bg-surface-800 transition-colors"
+              class="p-2 rounded-lg text-surface-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
               title="Hapus Kelas"
             >
               <Trash2 class="w-4 h-4" />
@@ -262,6 +335,35 @@ async function handleDelete(cls: Class) {
           <UiButton type="submit" :loading="isSaving">Simpan Data</UiButton>
         </div>
       </form>
+    </UiModal>
+
+    <!-- Members Inspection Modal (Admin CRUD) -->
+    <UiModal :show="showMembersModal" @close="showMembersModal = false" :title="`Daftar Anggota: ${selectedClassForMembers?.title || ''}`" size="md">
+      <div v-if="loadingMembers" class="py-6">
+        <UiSkeleton :rows="4" />
+      </div>
+      <div v-else-if="!classMembers.length" class="py-8 text-center text-xs text-surface-400">
+        Belum ada siswa atau anggota yang terdaftar di kelas ini.
+      </div>
+      <div v-else class="max-h-80 overflow-y-auto divide-y divide-surface-100 dark:divide-surface-800">
+        <div v-for="m in classMembers" :key="m.id" class="flex items-center justify-between py-2.5">
+          <div class="flex items-center gap-2.5">
+            <UiAvatar :name="m.user?.name || m.name" size="sm" />
+            <div>
+              <p class="text-xs font-semibold text-surface-900 dark:text-surface-100">{{ m.user?.name || m.name }}</p>
+              <p class="text-[10px] text-surface-400">{{ m.user?.email || m.email }}</p>
+            </div>
+          </div>
+          <UiBadge :variant="m.role === 'teacher' ? 'primary' : 'default'" size="sm">
+            {{ m.role === 'teacher' ? 'Guru' : 'Siswa' }}
+          </UiBadge>
+        </div>
+      </div>
+      <template #footer>
+        <div class="flex justify-end">
+          <UiButton variant="outline" size="sm" @click="showMembersModal = false">Tutup</UiButton>
+        </div>
+      </template>
     </UiModal>
   </div>
 </template>
