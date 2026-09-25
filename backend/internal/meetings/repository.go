@@ -41,7 +41,7 @@ func (r *Repository) ListByClass(classID int64) ([]models.Meeting, error) {
 	}
 	defer rows.Close()
 
-	var list []models.Meeting
+	list := make([]models.Meeting, 0)
 	for rows.Next() {
 		var m models.Meeting
 		var startedAt, endedAt sql.NullTime

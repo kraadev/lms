@@ -39,7 +39,7 @@ func (r *Repository) ListByClass(classID int64) ([]models.Quiz, error) {
 	}
 	defer rows.Close()
 
-	var list []models.Quiz
+	list := make([]models.Quiz, 0)
 	for rows.Next() {
 		var q models.Quiz
 		var startRaw, endRaw, createdRaw, updatedRaw interface{}
@@ -441,7 +441,7 @@ func (r *Repository) GetAnswersByAttempt(attemptID int64) ([]models.QuizAnswer, 
 	}
 	defer rows.Close()
 
-	var list []models.QuizAnswer
+	list := make([]models.QuizAnswer, 0)
 	for rows.Next() {
 		var a models.QuizAnswer
 		var optID sql.NullInt64
@@ -494,7 +494,7 @@ func (r *Repository) ListAttemptsByQuiz(quizID int64) ([]models.QuizAttempt, err
 	}
 	defer rows.Close()
 
-	var list []models.QuizAttempt
+	list := make([]models.QuizAttempt, 0)
 	for rows.Next() {
 		var qa models.QuizAttempt
 		var startRaw, subRaw, scoreRaw interface{}

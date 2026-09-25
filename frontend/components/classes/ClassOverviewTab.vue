@@ -30,9 +30,10 @@ async function copyClassCode() {
 async function loadAnnouncements() {
   isLoadingAnnouncements.value = true
   try {
-    announcements.value = await announcementsService.getByClass(props.classData.id)
+    const res = await announcementsService.getByClass(props.classData.id)
+    announcements.value = Array.isArray(res) ? res : []
   } catch (err: any) {
-    // silently catch or show empty
+    announcements.value = []
   } finally {
     isLoadingAnnouncements.value = false
   }
@@ -125,7 +126,7 @@ onMounted(() => {
       <div v-if="isLoadingAnnouncements">
         <UiSkeleton :rows="3" />
       </div>
-      <div v-else-if="!announcements.length">
+      <div v-else-if="!announcements || !announcements.length">
         <UiEmptyState
           :icon="Megaphone"
           title="Belum ada pengumuman"

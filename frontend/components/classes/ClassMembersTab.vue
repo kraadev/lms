@@ -16,9 +16,11 @@ async function loadMembers() {
   isLoading.value = true
   error.value = null
   try {
-    members.value = await classesService.getMembers(props.classId)
+    const res = await classesService.getMembers(props.classId)
+    members.value = Array.isArray(res) ? res : []
   } catch (err: any) {
     error.value = err?.message || 'Gagal memuat anggota kelas'
+    members.value = []
   } finally {
     isLoading.value = false
   }
@@ -27,12 +29,12 @@ async function loadMembers() {
 onMounted(loadMembers)
 
 const teachers = computed(() => {
-  return members.value.filter(m => (m.user?.role === 'teacher' || m.role === 'teacher') && 
+  return (members.value || []).filter(m => (m.user?.role === 'teacher' || m.role === 'teacher') && 
     (!searchQuery.value || m.user?.name?.toLowerCase().includes(searchQuery.value.toLowerCase()) || m.user?.email?.toLowerCase().includes(searchQuery.value.toLowerCase())))
 })
 
 const students = computed(() => {
-  return members.value.filter(m => (m.user?.role === 'student' || m.role === 'student' || (!m.user?.role && m.role !== 'teacher')) && 
+  return (members.value || []).filter(m => (m.user?.role === 'student' || m.role === 'student' || (!m.user?.role && m.role !== 'teacher')) && 
     (!searchQuery.value || m.user?.name?.toLowerCase().includes(searchQuery.value.toLowerCase()) || m.user?.email?.toLowerCase().includes(searchQuery.value.toLowerCase())))
 })
 </script>
