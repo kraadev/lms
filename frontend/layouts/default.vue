@@ -11,9 +11,9 @@ watch(() => route.path, () => {
 </script>
 
 <template>
-  <div class="flex min-h-screen bg-surface-50 dark:bg-surface-950">
+  <div class="flex h-screen overflow-hidden bg-surface-50 dark:bg-surface-950">
     <!-- Desktop Sidebar -->
-    <aside class="hidden lg:flex flex-col w-60 shrink-0 border-r border-surface-200 dark:border-surface-800 bg-white dark:bg-surface-900 h-screen sticky top-0 overflow-y-auto">
+    <aside class="hidden lg:flex flex-col w-60 shrink-0 border-r border-surface-200 dark:border-surface-800 bg-white dark:bg-surface-900 h-full overflow-y-auto">
       <!-- Logo -->
       <div class="flex items-center gap-2.5 px-5 h-14 border-b border-surface-200 dark:border-surface-800 shrink-0">
         <div class="w-7 h-7 rounded-lg bg-brand-600 flex items-center justify-center">
@@ -51,7 +51,7 @@ watch(() => route.path, () => {
     </Transition>
 
     <!-- Main content area -->
-    <div class="flex-1 flex flex-col min-w-0">
+    <div class="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
       <AppTopbar>
         <template #mobile-trigger>
           <button
@@ -65,7 +65,7 @@ watch(() => route.path, () => {
         </template>
       </AppTopbar>
 
-      <main class="flex-1 overflow-auto">
+      <main class="flex-1 overflow-y-auto">
         <slot />
       </main>
     </div>
