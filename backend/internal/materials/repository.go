@@ -37,7 +37,7 @@ func (r *Repository) ListByClass(classID int64) ([]models.Material, error) {
 	}
 	defer rows.Close()
 
-	var list []models.Material
+	list := make([]models.Material, 0)
 	for rows.Next() {
 		var m models.Material
 		var filePath, extURL sql.NullString

@@ -25,9 +25,11 @@ async function load() {
   isLoading.value = true
   error.value = null
   try {
-    materials.value = await materialsService.getByClass(props.classId)
+    const res = await materialsService.getByClass(props.classId)
+    materials.value = Array.isArray(res) ? res : []
   } catch (err: any) {
     error.value = err?.message || 'Gagal memuat materi'
+    materials.value = []
   } finally {
     isLoading.value = false
   }
@@ -109,7 +111,7 @@ function onFileChange(e: Event) {
 
     <div v-if="isLoading"><UiSkeleton :rows="4" /></div>
     <UiErrorState v-else-if="error" :message="error" @retry="load" />
-    <UiEmptyState v-else-if="!materials.length" :icon="BookMarked" title="Belum ada materi" :description="auth.isTeacher ? 'Tambahkan materi untuk siswa Anda.' : 'Guru belum menambahkan materi.'">
+    <UiEmptyState v-else-if="!materials || !materials.length" :icon="BookMarked" title="Belum ada materi" :description="auth.isTeacher ? 'Tambahkan materi untuk siswa Anda.' : 'Guru belum menambahkan materi.'">
       <template #action>
         <UiButton v-if="auth.isTeacher" size="sm" @click="openCreate">Tambah Materi Pertama</UiButton>
       </template>

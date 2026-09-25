@@ -19,9 +19,11 @@ async function load() {
   isLoading.value = true
   error.value = null
   try {
-    assignments.value = await assignmentsService.getByClass(props.classId)
+    const res = await assignmentsService.getByClass(props.classId)
+    assignments.value = Array.isArray(res) ? res : []
   } catch (err: any) {
     error.value = err?.message || 'Gagal memuat tugas'
+    assignments.value = []
   } finally {
     isLoading.value = false
   }
@@ -69,7 +71,7 @@ function isPastDue(dateStr: string): boolean {
 
     <div v-if="isLoading"><UiSkeleton :rows="4" /></div>
     <UiErrorState v-else-if="error" :message="error" @retry="load" />
-    <UiEmptyState v-else-if="!assignments.length" :icon="ClipboardList" title="Belum ada tugas" :description="auth.isTeacher ? 'Buat tugas pertama untuk kelas ini.' : 'Tidak ada tugas yang diberikan.'" />
+    <UiEmptyState v-else-if="!assignments || !assignments.length" :icon="ClipboardList" title="Belum ada tugas" :description="auth.isTeacher ? 'Buat tugas pertama untuk kelas ini.' : 'Tidak ada tugas yang diberikan.'" />
 
     <div v-else class="divide-y divide-surface-100 dark:divide-surface-800 rounded-xl border border-surface-200 dark:border-surface-800 bg-white dark:bg-surface-900 overflow-hidden">
       <NuxtLink

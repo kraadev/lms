@@ -24,9 +24,11 @@ async function loadMeetings() {
   isLoading.value = true
   error.value = null
   try {
-    meetings.value = await meetingsService.getByClass(props.classId)
+    const res = await meetingsService.getByClass(props.classId)
+    meetings.value = Array.isArray(res) ? res : []
   } catch (err: any) {
     error.value = err?.message || 'Gagal memuat daftar meeting'
+    meetings.value = []
   } finally {
     isLoading.value = false
   }
@@ -54,8 +56,8 @@ async function createMeeting() {
   }
 }
 
-const activeMeetings = computed(() => meetings.value.filter(m => m.status === 'active'))
-const pastMeetings = computed(() => meetings.value.filter(m => m.status !== 'active'))
+const activeMeetings = computed(() => (meetings.value || []).filter(m => m.status === 'active'))
+const pastMeetings = computed(() => (meetings.value || []).filter(m => m.status !== 'active'))
 </script>
 
 <template>

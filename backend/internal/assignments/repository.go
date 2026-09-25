@@ -41,7 +41,7 @@ func (r *Repository) ListByClass(classID int64) ([]models.Assignment, error) {
 	}
 	defer rows.Close()
 
-	var list []models.Assignment
+	list := make([]models.Assignment, 0)
 	for rows.Next() {
 		var a models.Assignment
 		var attach sql.NullString
@@ -287,7 +287,7 @@ func (r *Repository) ListSubmissions(assignmentID int64) ([]models.AssignmentSub
 	}
 	defer rows.Close()
 
-	var list []models.AssignmentSubmission
+	list := make([]models.AssignmentSubmission, 0)
 	for rows.Next() {
 		var s models.AssignmentSubmission
 		var textAns, filePath, feedback sql.NullString

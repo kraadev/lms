@@ -16,9 +16,11 @@ async function load() {
   isLoading.value = true
   error.value = null
   try {
-    quizzes.value = await quizzesService.getByClass(props.classId)
+    const res = await quizzesService.getByClass(props.classId)
+    quizzes.value = Array.isArray(res) ? res : []
   } catch (err: any) {
     error.value = err?.message || 'Gagal memuat kuis'
+    quizzes.value = []
   } finally {
     isLoading.value = false
   }
@@ -47,7 +49,7 @@ const statusBadge: Record<string, { variant: string; label: string }> = {
 
     <div v-if="isLoading"><UiSkeleton :rows="4" /></div>
     <UiErrorState v-else-if="error" :message="error" @retry="load" />
-    <UiEmptyState v-else-if="!quizzes.length" :icon="FileQuestion" title="Belum ada kuis" :description="auth.isTeacher ? 'Buat kuis untuk menguji pemahaman siswa.' : 'Belum ada kuis di kelas ini.'" />
+    <UiEmptyState v-else-if="!quizzes || !quizzes.length" :icon="FileQuestion" title="Belum ada kuis" :description="auth.isTeacher ? 'Buat kuis untuk menguji pemahaman siswa.' : 'Belum ada kuis di kelas ini.'" />
 
     <div v-else class="divide-y divide-surface-100 dark:divide-surface-800 rounded-xl border border-surface-200 dark:border-surface-800 bg-white dark:bg-surface-900 overflow-hidden">
       <NuxtLink
