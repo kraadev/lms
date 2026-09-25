@@ -1,0 +1,38 @@
+openapi: 3.0.3
+info:
+  title: LMS Platform API
+  version: 1.0.0
+  description: Canonical REST and WebSocket API specification for the Learning Management System.
+paths:
+  /healthz:
+    get:
+      summary: Liveness Probe
+      responses:
+        '200':
+          description: Service is alive
+  /readyz:
+    get:
+      summary: Readiness Probe
+      responses:
+        '200':
+          description: Database and storage ready
+  /api/auth/login:
+    post:
+      summary: Authenticate User
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                password:
+                  type: string
+      responses:
+        '200':
+          description: Login successful
+        '401':
+          description: Invalid credentials
