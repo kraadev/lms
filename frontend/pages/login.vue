@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { AlertCircle } from 'lucide-vue-next'
+
 definePageMeta({
   layout: 'auth',
   middleware: 'guest'
@@ -106,9 +108,7 @@ async function handleLogin() {
     <div class="bg-white dark:bg-surface-900 rounded-2xl shadow-elevated border border-surface-200 dark:border-surface-800 p-7">
       <!-- Server error alert -->
       <div v-if="serverError" class="mb-5 flex items-start gap-3 p-3.5 bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900 rounded-xl" role="alert">
-        <svg class="w-4.5 h-4.5 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
-        </svg>
+        <AlertCircle class="w-5 h-5 min-w-[20px] text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
         <p class="text-sm text-rose-700 dark:text-rose-300">{{ serverError }}</p>
       </div>
 
