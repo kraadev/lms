@@ -79,25 +79,47 @@ function submissionStatusLabel(status: string) {
 
     <!-- Student Dashboard -->
     <template v-else-if="auth.isStudent && studentData">
-      <!-- Header greeting -->
-      <div class="mb-6">
-        <h1 class="text-xl font-bold text-surface-900 dark:text-surface-100">{{ greeting }}, {{ auth.user?.name?.split(' ')[0] }} 👋</h1>
-        <p class="text-sm text-surface-500 dark:text-surface-400 mt-0.5">Ini ringkasan aktivitas belajar kamu hari ini.</p>
+      <!-- Header greeting hero -->
+      <div class="mb-6 relative overflow-hidden rounded-2xl p-6 bg-gradient-to-br from-brand-600/10 via-brand-500/5 to-surface-100/50 dark:from-brand-950/40 dark:via-surface-900/60 dark:to-surface-950 border border-brand-200/50 dark:border-brand-900/40 shadow-soft">
+        <div class="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-brand-100/80 dark:bg-brand-950/80 text-brand-700 dark:text-brand-300 mb-2">
+              <Sparkles class="w-3.5 h-3.5 text-brand-500" /> Portal Siswa
+            </div>
+            <h1 class="text-2xl font-bold tracking-tight text-surface-900 dark:text-surface-100">{{ greeting }}, {{ auth.user?.name?.split(' ')[0] }} 👋</h1>
+            <p class="text-sm text-surface-600 dark:text-surface-400 mt-1">Ringkasan aktivitas belajar, tugas, dan jadwal kelas hari ini.</p>
+          </div>
+          <div class="flex items-center gap-3">
+            <NuxtLink to="/classes">
+              <UiButton variant="outline" size="sm" class="bg-white/80 dark:bg-surface-900/80 backdrop-blur-xs">
+                Jelajahi Kelas
+              </UiButton>
+            </NuxtLink>
+            <NuxtLink to="/assignments">
+              <UiButton variant="primary" size="sm">
+                Lihat Tugas
+              </UiButton>
+            </NuxtLink>
+          </div>
+        </div>
       </div>
 
       <!-- Active Meeting Banner -->
-      <div v-if="studentData.active_meeting" class="mb-5 flex items-center justify-between gap-4 p-4 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/50 rounded-xl">
-        <div class="flex items-center gap-3">
-          <div class="w-9 h-9 rounded-full bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center shrink-0">
-            <Video class="w-4.5 h-4.5 text-emerald-600 dark:text-emerald-400" />
+      <div v-if="studentData.active_meeting" class="mb-6 flex items-center justify-between gap-4 p-4.5 bg-gradient-to-r from-emerald-500/15 via-emerald-500/5 to-transparent border border-emerald-500/30 rounded-2xl shadow-soft">
+        <div class="flex items-center gap-3.5">
+          <div class="w-10 h-10 rounded-xl bg-emerald-500 text-white flex items-center justify-center shrink-0 shadow-sm shadow-emerald-500/30 animate-pulse-subtle">
+            <Video class="w-5 h-5" />
           </div>
           <div>
-            <p class="text-sm font-semibold text-emerald-800 dark:text-emerald-200">Kelas online sedang berlangsung</p>
-            <p class="text-xs text-emerald-600 dark:text-emerald-400">{{ studentData.active_meeting.title }}</p>
+            <div class="flex items-center gap-2">
+              <span class="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+              <p class="text-sm font-bold text-emerald-900 dark:text-emerald-200">Kelas online sedang berlangsung</p>
+            </div>
+            <p class="text-xs font-medium text-emerald-700 dark:text-emerald-400 mt-0.5">{{ studentData.active_meeting.title }}</p>
           </div>
         </div>
         <NuxtLink :to="`/meetings/${studentData.active_meeting.id}`">
-          <UiButton size="sm" variant="success">Gabung</UiButton>
+          <UiButton size="sm" variant="success" class="shadow-sm">Gabung Sekarang</UiButton>
         </NuxtLink>
       </div>
 
@@ -106,31 +128,31 @@ function submissionStatusLabel(status: string) {
         v-if="studentData.current_classes?.length"
         variant="interactive"
         padding="lg"
-        class="mb-6 bg-gradient-to-r from-brand-900/10 via-brand-600/5 to-transparent border-brand-200/70 dark:border-brand-900/50 shadow-soft"
+        class="mb-6 bg-gradient-to-br from-brand-500/10 via-brand-500/5 to-transparent border-brand-200/80 dark:border-brand-900/60 shadow-soft hover:shadow-elevated glass-card-interactive"
       >
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div class="space-y-1.5 min-w-0">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-5">
+          <div class="space-y-2 min-w-0">
             <div class="flex items-center gap-2">
-              <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-brand-100 text-brand-700 dark:bg-brand-950/70 dark:text-brand-300">
+              <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[11px] font-semibold bg-brand-100 text-brand-700 dark:bg-brand-950/70 dark:text-brand-300">
                 <Sparkles class="w-3 h-3 text-brand-600 dark:text-brand-400" />
                 Lanjutkan Belajar
               </span>
-              <span class="text-xs text-surface-500 dark:text-surface-400">Terakhir diakses</span>
+              <span class="text-xs text-surface-500 dark:text-surface-400">Aktivitas Terkini</span>
             </div>
             <h2 class="text-lg font-bold text-surface-900 dark:text-surface-50 truncate">
               {{ studentData.current_classes[0].title }}
             </h2>
-            <p class="text-xs text-surface-500 dark:text-surface-400">
-              Pengajar: {{ studentData.current_classes[0].teacher?.name || 'Guru Pengampu' }} &middot; {{ studentData.current_classes[0].academic_year || 'Tahun Ajaran Aktif' }}
+            <p class="text-xs text-surface-600 dark:text-surface-400">
+              Pengajar: <span class="font-medium text-surface-800 dark:text-surface-200">{{ studentData.current_classes[0].teacher?.name || 'Guru Pengampu' }}</span> &middot; {{ studentData.current_classes[0].academic_year || 'Tahun Ajaran Aktif' }}
             </p>
           </div>
 
           <div class="flex sm:flex-col sm:items-end justify-between items-center gap-3 shrink-0">
-            <div class="w-36 sm:w-44">
+            <div class="w-36 sm:w-48">
               <UiProgress :value="68" :max="100" size="sm" variant="brand" show-label label-position="right" />
             </div>
             <NuxtLink :to="`/classes/${studentData.current_classes[0].id}`">
-              <UiButton size="sm" variant="primary">
+              <UiButton size="sm" variant="primary" class="shadow-sm">
                 Masuk Kelas <ArrowRight class="w-3.5 h-3.5 ml-1" />
               </UiButton>
             </NuxtLink>
@@ -269,28 +291,69 @@ function submissionStatusLabel(status: string) {
 
     <!-- Teacher Dashboard -->
     <template v-else-if="auth.isTeacher && teacherData">
-      <div class="mb-6">
-        <h1 class="text-xl font-bold text-surface-900 dark:text-surface-100">{{ greeting }}, {{ auth.user?.name?.split(' ')[0] }} 👋</h1>
-        <p class="text-sm text-surface-500 dark:text-surface-400 mt-0.5">Kelola kelas dan pantau perkembangan siswa Anda.</p>
+      <div class="mb-6 relative overflow-hidden rounded-2xl p-6 bg-gradient-to-br from-brand-600/10 via-brand-500/5 to-surface-100/50 dark:from-brand-950/40 dark:via-surface-900/60 dark:to-surface-950 border border-brand-200/50 dark:border-brand-900/40 shadow-soft">
+        <div class="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-brand-100/80 dark:bg-brand-950/80 text-brand-700 dark:text-brand-300 mb-2">
+              <GraduationCap class="w-3.5 h-3.5 text-brand-500" /> Portal Pengajar
+            </div>
+            <h1 class="text-2xl font-bold tracking-tight text-surface-900 dark:text-surface-100">{{ greeting }}, {{ auth.user?.name?.split(' ')[0] }} 👋</h1>
+            <p class="text-sm text-surface-600 dark:text-surface-400 mt-1">Kelola kelas, evaluasi tugas masuk, dan pantau perkembangan siswa.</p>
+          </div>
+          <div class="flex items-center gap-3">
+            <NuxtLink to="/classes">
+              <UiButton variant="primary" size="sm" class="shadow-sm">
+                Kelola Kelas
+              </UiButton>
+            </NuxtLink>
+          </div>
+        </div>
       </div>
 
       <!-- Stats row -->
-      <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
-        <div class="p-4 bg-white dark:bg-surface-900 rounded-xl border border-surface-200 dark:border-surface-800">
-          <p class="text-2xl font-bold text-surface-900 dark:text-surface-100">{{ teacherData.classes_taught?.length || 0 }}</p>
-          <p class="text-xs text-surface-500 dark:text-surface-400 mt-0.5">Kelas Diajar</p>
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-3.5 mb-6">
+        <div class="p-4.5 bg-white dark:bg-surface-900 rounded-2xl border border-surface-200/80 dark:border-surface-800 shadow-soft hover:shadow-elevated glass-card-interactive transition-all">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-semibold uppercase tracking-wider text-surface-400 dark:text-surface-500">Kelas Diajar</span>
+            <div class="w-8 h-8 rounded-xl bg-brand-50 dark:bg-brand-950/60 text-brand-600 dark:text-brand-400 flex items-center justify-center">
+              <BookOpen class="w-4 h-4" />
+            </div>
+          </div>
+          <p class="text-2xl font-extrabold text-surface-900 dark:text-surface-100">{{ teacherData.classes_taught?.length || 0 }}</p>
+          <p class="text-[11px] text-surface-500 dark:text-surface-400 mt-0.5">Total kelas aktif</p>
         </div>
-        <div class="p-4 bg-white dark:bg-surface-900 rounded-xl border border-surface-200 dark:border-surface-800">
-          <p class="text-2xl font-bold text-amber-600 dark:text-amber-400">{{ teacherData.pending_grading_count || 0 }}</p>
-          <p class="text-xs text-surface-500 dark:text-surface-400 mt-0.5">Menunggu Penilaian</p>
+
+        <div class="p-4.5 bg-white dark:bg-surface-900 rounded-2xl border border-surface-200/80 dark:border-surface-800 shadow-soft hover:shadow-elevated glass-card-interactive transition-all">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-semibold uppercase tracking-wider text-surface-400 dark:text-surface-500">Menunggu Penilaian</span>
+            <div class="w-8 h-8 rounded-xl bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+              <ClipboardList class="w-4 h-4" />
+            </div>
+          </div>
+          <p class="text-2xl font-extrabold text-amber-600 dark:text-amber-400">{{ teacherData.pending_grading_count || 0 }}</p>
+          <p class="text-[11px] text-surface-500 dark:text-surface-400 mt-0.5">Submission belum diperiksa</p>
         </div>
-        <div class="p-4 bg-white dark:bg-surface-900 rounded-xl border border-surface-200 dark:border-surface-800">
-          <p class="text-2xl font-bold text-brand-600 dark:text-brand-400">{{ teacherData.quiz_overview?.active_quizzes || 0 }}</p>
-          <p class="text-xs text-surface-500 dark:text-surface-400 mt-0.5">Kuis Aktif</p>
+
+        <div class="p-4.5 bg-white dark:bg-surface-900 rounded-2xl border border-surface-200/80 dark:border-surface-800 shadow-soft hover:shadow-elevated glass-card-interactive transition-all">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-semibold uppercase tracking-wider text-surface-400 dark:text-surface-500">Kuis Aktif</span>
+            <div class="w-8 h-8 rounded-xl bg-violet-50 dark:bg-violet-950/60 text-violet-600 dark:text-violet-400 flex items-center justify-center">
+              <FileQuestion class="w-4 h-4" />
+            </div>
+          </div>
+          <p class="text-2xl font-extrabold text-violet-600 dark:text-violet-400">{{ teacherData.quiz_overview?.active_quizzes || 0 }}</p>
+          <p class="text-[11px] text-surface-500 dark:text-surface-400 mt-0.5">Evaluasi berlangsung</p>
         </div>
-        <div class="p-4 bg-white dark:bg-surface-900 rounded-xl border border-surface-200 dark:border-surface-800">
-          <p class="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{{ teacherData.active_meetings?.length || 0 }}</p>
-          <p class="text-xs text-surface-500 dark:text-surface-400 mt-0.5">Meeting Aktif</p>
+
+        <div class="p-4.5 bg-white dark:bg-surface-900 rounded-2xl border border-surface-200/80 dark:border-surface-800 shadow-soft hover:shadow-elevated glass-card-interactive transition-all">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-semibold uppercase tracking-wider text-surface-400 dark:text-surface-500">Meeting Aktif</span>
+            <div class="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+              <Video class="w-4 h-4" />
+            </div>
+          </div>
+          <p class="text-2xl font-extrabold text-emerald-600 dark:text-emerald-400">{{ teacherData.active_meetings?.length || 0 }}</p>
+          <p class="text-[11px] text-surface-500 dark:text-surface-400 mt-0.5">Ruang vicon dibuka</p>
         </div>
       </div>
 
@@ -346,55 +409,74 @@ function submissionStatusLabel(status: string) {
 
     <!-- Admin Dashboard -->
     <template v-else-if="auth.isAdmin && adminData">
-      <div class="mb-6">
-        <h1 class="text-xl font-bold text-surface-900 dark:text-surface-100">Admin Dashboard</h1>
-        <p class="text-sm text-surface-500 dark:text-surface-400 mt-0.5">Pantau statistik dan aktivitas sistem LMS.</p>
+      <div class="mb-6 relative overflow-hidden rounded-2xl p-6 bg-gradient-to-br from-brand-600/10 via-brand-500/5 to-surface-100/50 dark:from-brand-950/40 dark:via-surface-900/60 dark:to-surface-950 border border-brand-200/50 dark:border-brand-900/40 shadow-soft">
+        <div class="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-brand-100/80 dark:bg-brand-950/80 text-brand-700 dark:text-brand-300 mb-2">
+              <Users class="w-3.5 h-3.5 text-brand-500" /> Pusat Kontrol Administrator
+            </div>
+            <h1 class="text-2xl font-bold tracking-tight text-surface-900 dark:text-surface-100">Admin Dashboard</h1>
+            <p class="text-sm text-surface-600 dark:text-surface-400 mt-1">Pantau statistik ekosistem, alur pengguna, kelas, dan integritas sistem LMS.</p>
+          </div>
+          <div class="flex items-center gap-3">
+            <NuxtLink to="/admin/users">
+              <UiButton variant="outline" size="sm" class="bg-white/80 dark:bg-surface-900/80 backdrop-blur-xs">
+                Kelola User
+              </UiButton>
+            </NuxtLink>
+            <NuxtLink to="/admin/classes">
+              <UiButton variant="primary" size="sm" class="shadow-sm">
+                Kelola Kelas
+              </UiButton>
+            </NuxtLink>
+          </div>
+        </div>
       </div>
 
-      <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
-        <UiCard variant="default" padding="md" class="border border-surface-200 dark:border-surface-800">
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-3.5 mb-6">
+        <UiCard variant="default" padding="md" class="border border-surface-200/80 dark:border-surface-800 rounded-2xl shadow-soft hover:shadow-elevated glass-card-interactive transition-all">
           <div class="flex items-center justify-between">
             <div>
               <p class="text-xs font-semibold uppercase tracking-wider text-surface-400 dark:text-surface-500">Total Siswa</p>
-              <p class="text-2xl sm:text-3xl font-bold text-surface-900 dark:text-surface-50 mt-1">{{ adminData.total_students }}</p>
+              <p class="text-2xl sm:text-3xl font-extrabold text-surface-900 dark:text-surface-50 mt-1">{{ adminData.total_students }}</p>
             </div>
-            <div class="w-10 h-10 rounded-xl bg-brand-50 dark:bg-brand-950/50 flex items-center justify-center text-brand-600 dark:text-brand-400">
+            <div class="w-10 h-10 rounded-xl bg-brand-50 dark:bg-brand-950/60 flex items-center justify-center text-brand-600 dark:text-brand-400">
               <Users class="w-5 h-5" />
             </div>
           </div>
         </UiCard>
 
-        <UiCard variant="default" padding="md" class="border border-surface-200 dark:border-surface-800">
+        <UiCard variant="default" padding="md" class="border border-surface-200/80 dark:border-surface-800 rounded-2xl shadow-soft hover:shadow-elevated glass-card-interactive transition-all">
           <div class="flex items-center justify-between">
             <div>
               <p class="text-xs font-semibold uppercase tracking-wider text-surface-400 dark:text-surface-500">Total Guru</p>
-              <p class="text-2xl sm:text-3xl font-bold text-amber-600 dark:text-amber-400 mt-1">{{ adminData.total_teachers }}</p>
+              <p class="text-2xl sm:text-3xl font-extrabold text-amber-600 dark:text-amber-400 mt-1">{{ adminData.total_teachers }}</p>
             </div>
-            <div class="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950/50 flex items-center justify-center text-amber-600 dark:text-amber-400">
+            <div class="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950/60 flex items-center justify-center text-amber-600 dark:text-amber-400">
               <GraduationCap class="w-5 h-5" />
             </div>
           </div>
         </UiCard>
 
-        <UiCard variant="default" padding="md" class="border border-surface-200 dark:border-surface-800">
+        <UiCard variant="default" padding="md" class="border border-surface-200/80 dark:border-surface-800 rounded-2xl shadow-soft hover:shadow-elevated glass-card-interactive transition-all">
           <div class="flex items-center justify-between">
             <div>
               <p class="text-xs font-semibold uppercase tracking-wider text-surface-400 dark:text-surface-500">Total Kelas</p>
-              <p class="text-2xl sm:text-3xl font-bold text-violet-600 dark:text-violet-400 mt-1">{{ adminData.total_classes }}</p>
+              <p class="text-2xl sm:text-3xl font-extrabold text-violet-600 dark:text-violet-400 mt-1">{{ adminData.total_classes }}</p>
             </div>
-            <div class="w-10 h-10 rounded-xl bg-violet-50 dark:bg-violet-950/50 flex items-center justify-center text-violet-600 dark:text-violet-400">
+            <div class="w-10 h-10 rounded-xl bg-violet-50 dark:bg-violet-950/60 flex items-center justify-center text-violet-600 dark:text-violet-400">
               <BookOpen class="w-5 h-5" />
             </div>
           </div>
         </UiCard>
 
-        <UiCard variant="default" padding="md" class="border border-surface-200 dark:border-surface-800">
+        <UiCard variant="default" padding="md" class="border border-surface-200/80 dark:border-surface-800 rounded-2xl shadow-soft hover:shadow-elevated glass-card-interactive transition-all">
           <div class="flex items-center justify-between">
             <div>
               <p class="text-xs font-semibold uppercase tracking-wider text-surface-400 dark:text-surface-500">Kelas Aktif</p>
-              <p class="text-2xl sm:text-3xl font-bold text-emerald-600 dark:text-emerald-400 mt-1">{{ adminData.active_classes }}</p>
+              <p class="text-2xl sm:text-3xl font-extrabold text-emerald-600 dark:text-emerald-400 mt-1">{{ adminData.active_classes }}</p>
             </div>
-            <div class="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+            <div class="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
               <Sparkles class="w-5 h-5" />
             </div>
           </div>

@@ -46,16 +46,18 @@ function useClickOutside(el: Ref<HTMLElement | null>, cb: () => void) {
 </script>
 
 <template>
-  <header class="h-14 flex items-center gap-3 px-4 lg:px-6 border-b border-surface-200 dark:border-surface-800 bg-white dark:bg-surface-950 shrink-0">
+  <header class="h-14 flex items-center gap-3 px-4 lg:px-6 border-b border-surface-200/80 dark:border-surface-800/80 bg-white/80 dark:bg-surface-950/80 backdrop-blur-md sticky top-0 z-30 shrink-0">
     <!-- Slot for mobile menu button (injected from layout) -->
     <slot name="mobile-trigger" />
 
     <!-- Page title -->
     <div class="flex-1 min-w-0">
       <slot>
-        <span class="text-sm font-semibold text-surface-800 dark:text-surface-200">
-          {{ currentRouteTitle }}
-        </span>
+        <div class="flex items-center gap-2">
+          <span class="text-sm font-bold text-surface-900 dark:text-surface-100 tracking-tight">
+            {{ currentRouteTitle }}
+          </span>
+        </div>
       </slot>
     </div>
 
