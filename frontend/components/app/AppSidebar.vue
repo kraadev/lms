@@ -138,24 +138,24 @@ function isActive(item: NavItem): boolean {
         :key="item.href"
         :to="item.href"
         :class="[
-          'flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all group relative focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/50',
+          'flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium transition-all duration-200 group relative focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/50',
           isActive(item)
-            ? 'bg-brand-50 dark:bg-brand-950/60 text-brand-600 dark:text-brand-300'
-            : 'text-surface-600 dark:text-surface-400 hover:bg-surface-100/80 dark:hover:bg-surface-800/60 hover:text-surface-900 dark:hover:text-surface-100'
+            ? 'bg-gradient-to-r from-brand-500/10 to-brand-500/5 text-brand-700 dark:text-brand-300 font-semibold shadow-xs'
+            : 'text-surface-600 dark:text-surface-400 hover:bg-surface-100/90 dark:hover:bg-surface-800/70 hover:text-surface-900 dark:hover:text-surface-100'
         ]"
       >
-        <!-- Active indicator bar -->
+        <!-- Active indicator bar with gentle glow -->
         <span
           v-if="isActive(item)"
-          class="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 bg-brand-600 dark:bg-brand-400 rounded-r-full"
+          class="absolute left-0 top-1/2 -translate-y-1/2 w-1.5 h-5 bg-brand-600 dark:bg-brand-400 rounded-r-full shadow-sm shadow-brand-500/50"
         />
 
         <div class="flex items-center gap-2.5 min-w-0">
           <component
             :is="item.icon"
             :class="[
-              'w-4 h-4 shrink-0 transition-transform group-hover:scale-110',
-              isActive(item) ? 'text-brand-600 dark:text-brand-400' : 'text-surface-400 dark:text-surface-500'
+              'w-4 h-4 shrink-0 transition-transform duration-200 group-hover:scale-110',
+              isActive(item) ? 'text-brand-600 dark:text-brand-400' : 'text-surface-400 dark:text-surface-500 group-hover:text-surface-700 dark:group-hover:text-surface-300'
             ]"
           />
           <span class="truncate">{{ item.label }}</span>
@@ -164,7 +164,7 @@ function isActive(item: NavItem): boolean {
         <!-- Optional Unread Badge -->
         <span
           v-if="item.badge"
-          class="flex items-center justify-center min-w-[18px] h-4 px-1 rounded-full text-[10px] font-bold bg-rose-500 text-white shrink-0 ml-1"
+          class="flex items-center justify-center min-w-[18px] h-4.5 px-1.5 rounded-full text-[10px] font-bold bg-rose-500 text-white shadow-xs shrink-0 ml-1"
         >
           {{ Number(item.badge) > 9 ? '9+' : item.badge }}
         </span>

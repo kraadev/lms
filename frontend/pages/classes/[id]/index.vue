@@ -89,44 +89,45 @@ watch(classId, load)
     <!-- Content -->
     <div v-else-if="cls">
       <!-- Class Header -->
-      <div class="border-b border-surface-200 dark:border-surface-800 bg-white dark:bg-surface-900">
-        <div class="px-4 md:px-6 pt-5 pb-0 max-w-6xl mx-auto">
-          <div class="flex items-start gap-4 mb-4">
-            <div class="w-12 h-12 rounded-xl bg-brand-100 dark:bg-brand-950/50 flex items-center justify-center shrink-0">
-              <BookOpen class="w-6 h-6 text-brand-600 dark:text-brand-400" />
+      <div class="border-b border-surface-200/80 dark:border-surface-800/80 bg-white/80 dark:bg-surface-900/80 backdrop-blur-md">
+        <div class="px-4 md:px-6 pt-6 pb-0 max-w-6xl mx-auto">
+          <div class="flex items-start gap-4.5 mb-5">
+            <div class="w-14 h-14 rounded-2xl bg-gradient-to-tr from-brand-600 to-brand-400 text-white flex items-center justify-center shrink-0 shadow-md shadow-brand-500/25">
+              <BookOpen class="w-7 h-7" />
             </div>
             <div class="flex-1 min-w-0">
-              <div class="flex items-center gap-2 flex-wrap">
-                <h1 class="text-lg font-bold text-surface-900 dark:text-surface-100">{{ cls.title }}</h1>
+              <div class="flex items-center gap-2.5 flex-wrap">
+                <h1 class="text-xl sm:text-2xl font-bold tracking-tight text-surface-900 dark:text-surface-100">{{ cls.title }}</h1>
                 <UiBadge :variant="cls.status === 'active' ? 'success' : 'default'" size="sm">{{ cls.status === 'active' ? 'Aktif' : 'Arsip' }}</UiBadge>
                 <button
                   v-if="cls.code"
                   type="button"
-                  class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-mono font-semibold bg-surface-100 dark:bg-surface-800 text-surface-700 dark:text-surface-300 hover:bg-surface-200 dark:hover:bg-surface-700 transition-colors focus-ring cursor-pointer"
+                  class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono font-semibold bg-brand-50 hover:bg-brand-100/80 dark:bg-brand-950/60 dark:hover:bg-brand-900/70 text-brand-700 dark:text-brand-300 border border-brand-200/60 dark:border-brand-800/60 transition-colors focus-ring cursor-pointer shadow-xs"
                   title="Klik untuk menyalin kode kelas"
                   @click="copyClassCode"
                 >
                   <span>Kode: {{ cls.code }}</span>
-                  <component :is="isCopied ? Check : Copy" class="w-3 h-3 text-brand-600 dark:text-brand-400" />
+                  <component :is="isCopied ? Check : Copy" class="w-3.5 h-3.5 text-brand-600 dark:text-brand-400" />
                 </button>
               </div>
-              <div class="flex flex-wrap items-center gap-3 mt-1 text-xs text-surface-500 dark:text-surface-400">
-                <span>{{ cls.academic_year }}</span>
-                <span v-if="cls.teacher">&middot; {{ cls.teacher.name }}</span>
-                <span>&middot; {{ cls.member_count || 0 }} anggota</span>
+              <div class="flex flex-wrap items-center gap-3 mt-1.5 text-xs text-surface-500 dark:text-surface-400 font-medium">
+                <span class="inline-flex items-center gap-1 bg-surface-100 dark:bg-surface-800/60 px-2 py-0.5 rounded-md text-[11px]">{{ cls.academic_year }}</span>
+                <span v-if="cls.teacher">&middot; Pengajar: {{ cls.teacher.name }}</span>
+                <span>&middot; {{ cls.member_count || 0 }} siswa terdaftar</span>
               </div>
             </div>
           </div>
 
           <!-- Active Meeting Banner in class header -->
-          <div v-if="cls.active_meeting" class="flex items-center justify-between gap-3 px-3 py-2 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/40 rounded-lg mb-4">
-            <div class="flex items-center gap-2 text-sm">
-              <Video class="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-              <span class="text-emerald-800 dark:text-emerald-200 font-medium">Kelas online sedang berlangsung:</span>
-              <span class="text-emerald-700 dark:text-emerald-300">{{ cls.active_meeting.title }}</span>
+          <div v-if="cls.active_meeting" class="flex items-center justify-between gap-3 px-4 py-2.5 bg-gradient-to-r from-emerald-500/15 via-emerald-500/5 to-transparent border border-emerald-500/30 rounded-xl mb-4 shadow-xs">
+            <div class="flex items-center gap-2.5 text-sm">
+              <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+              <Video class="w-4.5 h-4.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+              <span class="text-emerald-900 dark:text-emerald-200 font-bold">Kelas Online Aktif:</span>
+              <span class="text-emerald-700 dark:text-emerald-300 font-medium truncate">{{ cls.active_meeting.title }}</span>
             </div>
             <NuxtLink :to="`/meetings/${cls.active_meeting.id}`">
-              <UiButton size="xs" variant="success">Gabung</UiButton>
+              <UiButton size="xs" variant="success" class="shadow-xs">Gabung Sekarang</UiButton>
             </NuxtLink>
           </div>
 

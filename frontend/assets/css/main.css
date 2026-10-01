@@ -77,3 +77,52 @@
     opacity: 0.6;
   }
 }
+
+/* Glassmorphism & Modern Aesthetic Utilities */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(226, 232, 240, 0.8);
+}
+
+.dark .glass-panel {
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(30, 41, 59, 0.8);
+}
+
+.glass-card-interactive {
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.glass-card-interactive:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 24px -10px rgba(99, 102, 241, 0.12), 0 4px 6px -4px rgba(0, 0, 0, 0.05);
+}
+
+.dark .glass-card-interactive:hover {
+  box-shadow: 0 12px 24px -10px rgba(99, 102, 241, 0.2), 0 4px 12px -2px rgba(0, 0, 0, 0.5);
+}
+
+.hero-glow-brand {
+  position: relative;
+  overflow: hidden;
+}
+
+.hero-glow-brand::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -20%;
+  width: 140%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.12) 0%, rgba(99, 102, 241, 0) 70%);
+  pointer-events: none;
+}
+
+.dark .hero-glow-brand::before {
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.18) 0%, rgba(99, 102, 241, 0) 70%);
+}
+
